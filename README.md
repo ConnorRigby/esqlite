@@ -1,4 +1,3 @@
-Esqlite [![Build Status](https://secure.travis-ci.org/mmzeeman/esqlite.png?branch=master)](http://travis-ci.org/mmzeeman/esqlite)
 =======
 
 An Erlang nif library for sqlite3.
@@ -17,4 +16,3 @@ Special care has been taken not to block the scheduler of the calling
 process. This is done by handling all commands from erlang within a
 lightweight thread. The erlang scheduler will get control back when
 the command has been added to the command-queue of the thread.
-

@@ -1,36 +1,30 @@
-PROJECT = esqlite
-DIALYZER = dialyzer
+ifeq ($(ERL_EI_INCLUDE_DIR),)
+$(error ERL_EI_INCLUDE_DIR not set. Invoke via mix)
+endif
 
-REBAR := $(shell which rebar 2>/dev/null || echo ./rebar)
-REBAR_URL := https://github.com/downloads/basho/rebar/rebar
+# Set Erlang-specific compile and linker flags
+ERL_CFLAGS ?= -I$(ERL_EI_INCLUDE_DIR)
+ERL_LDFLAGS ?= -L$(ERL_EI_LIBDIR)
 
-all: compile
+SRC=$(wildcard c_src/*.c)
+OBJ=$(SRC:.c=.o)
 
-./rebar:
-	erl -noshell -s inets start -s ssl start \
-        -eval '{ok, saved_to_file} = httpc:request(get, {"$(REBAR_URL)", []}, [], [{stream, "./rebar"}])' \
-        -s inets stop -s init stop
-	chmod +x ./rebar
+LDFLAGS ?= -fPIC -shared -pedantic
+CFLAGS ?= -fPIC -O2
 
-compile: rebar
-	$(REBAR) compile
+NIF=priv/esqlite3_nif.so
 
-test: compile
-	$(REBAR) eunit
+all: priv $(NIF)
 
-clean: rebar
-	$(REBAR) clean
+priv:
+	mkdir -p priv
 
-distclean: 
-	rm $(REBAR)
+%.o: %.c
+	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) -o $@ $<
 
-# dializer 
+$(NIF): $(OBJ)
+	$(CC) $^ $(ERL_LDFLAGS) $(LDFLAGS) -o $@
 
-build-plt:
-	@$(DIALYZER) --build_plt --output_plt .$(PROJECT).plt \
-		--apps kernel stdlib 
-
-dialyze:
-	@$(DIALYZER) --src src --plt .$(PROJECT).plt --no_native \
-		-Werror_handling -Wrace_conditions -Wunmatched_returns -Wunderspecs
-
+clean:
+	$(RM) $(NIF)
+	$(RM) $(OBJ)
