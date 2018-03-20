@@ -6,7 +6,7 @@ defmodule Esqlite.MixProject do
       app: :esqlite,
       version: "0.1.0",
       elixir: "~> 1.6",
-      compilers: [:elixir_make] ++ Mix.compilers,
+      compilers: [:elixir_make] ++ Mix.compilers(),
       make_clean: ["clean"],
       make_env: make_env(),
       start_permanent: Mix.env() == :prod,
@@ -21,6 +21,7 @@ defmodule Esqlite.MixProject do
           "ERL_EI_INCLUDE_DIR" => "#{:code.root_dir()}/usr/include",
           "ERL_EI_LIBDIR" => "#{:code.root_dir()}/usr/lib"
         }
+
       _ ->
         %{}
     end
