@@ -330,6 +330,19 @@ defmodule Esqlite3 do
       timeout -> throw({:error, :timeout, ref})
     end
   end
+
+  # This is to remove the default arg injection from the stacktrace.
+  @compile {:inline, open: 1}
+  @compile {:inline, exec: 2}
+  @compile {:inline, changes: 1}
+  @compile {:inline, insert: 2}
+  @compile {:inline, prepare: 2}
+  @compile {:inline, step: 1}
+  @compile {:inline, reset: 1}
+  @compile {:inline, bind: 2}
+  @compile {:inline, column_names: 1}
+  @compile {:inline, column_types: 1}
+  @compile {:inline, close: 1}
 end
 
 defmodule :esqlite3 do
