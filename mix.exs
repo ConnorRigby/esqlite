@@ -53,9 +53,9 @@ defmodule Esqlite.MixProject do
   defp deps do
     [
       {:elixir_make, "~> 0.4.1", runtime: false},
-      {:dialyxir, "~> 0.5.1", runtime: false},
+      {:dialyxir, "~> 0.5.1", runtime: false, only: :dev},
       {:excoveralls, "~> 0.8", only: :test, optional: true},
-      {:ex_doc, "~> 0.18.3", runtime: false}
+      {:ex_doc, "~> 0.18.3", runtime: false, only: :dev}
     ]
   end
 end
