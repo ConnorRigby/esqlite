@@ -7,7 +7,8 @@ defmodule Esqlite3 do
 
   @default_timeout Application.get_env(:esqlite, :default_timeout, 5000)
 
-  @type connection :: {:ok, connection, reference, term}
+  @typedoc ""
+  @type connection :: {:connection, connection, reference, term}
   @type filename :: Path.t()
 
   @type sql :: any
