@@ -265,7 +265,7 @@ defmodule Esqlite3 do
     end
   end
 
-  def foreach_s(f, statement) do
+  def foreach_s(f, statement) when is_function(f, 2) do
     column_names = column_names(statement)
 
     case try_step(statement, 0) do

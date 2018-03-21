@@ -133,7 +133,8 @@ bind_for_queries_test() ->
                 [<<"test_table">>], Db)),
     ?assertEqual([{1}], esqlite3:q(<<"SELECT count(type) FROM sqlite_master WHERE type='table' AND name=?;">>,
                 [[<<"test_table">>]], Db)),
-
+    ?assertEqual({row, {1}}, esqlite3:exec(<<"SELECT count(type) FROM sqlite_master WHERE type='table' AND name=?;">>,
+                [[<<"test_table">>]], Db)),
     ok.
 
 column_names_test() ->
@@ -364,3 +365,26 @@ garbage_collect_test() ->
     erlang:garbage_collect(),
 
     ok.
+
+insert_test() ->
+  {ok, Db} = esqlite3:open(":memory:"),
+  ok = esqlite3:exec("begin", Db),
+  ok = esqlite3:exec("create table test_table(one varchar(10), two int);", Db),
+  ?assertEqual({ok, 1}, esqlite3:insert(["insert into test_table values(", "\"hello1\"", ",", "10);"], Db)),
+  ?assertEqual({ok, 2}, esqlite3:insert(["insert into test_table values(", "\"hello2\"", ",", "100);"], Db)),
+  ok = esqlite3:exec("commit;", Db),
+  ok.
+
+prepare_error_test() ->
+  {ok, Db} = esqlite3:open(":memory:"),
+  esqlite3:exec("begin;", Db),
+  esqlite3:exec("create table test_table(one varchar(10), two int);", Db),
+
+  ?assertEqual(
+    {error, {sqlite_error, "near \"insurt\": syntax error"}},
+      esqlite3:prepare("insurt into test_table values(\"one\", 2)", Db)),
+
+  ?assertException(throw, {error, {sqlite_error, _}}, esqlite3:q("selectt * from test_table order by two", Db)),
+  ?assertException(throw, {error, {sqlite_error, _}}, esqlite3:q("insert into test_table falues(?1, ?2)", [one, 2], Db)),
+
+  ok.

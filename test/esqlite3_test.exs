@@ -179,6 +179,15 @@ defmodule Esqlite3Test do
                db
              )
            )
+
+    assert match?(
+             {:row, {1}},
+             Esqlite3.exec(
+               "SELECT count(type) FROM sqlite_master WHERE type='table' AND name=?;",
+               [[<<"test_table">>]],
+               db
+             )
+           )
   end
 
   test "column names" do
@@ -294,18 +303,39 @@ defmodule Esqlite3Test do
     :ok = Esqlite3.exec(["insert into test_table values(", "\"hello4\"", ",", "13);"], db)
     :ok = Esqlite3.exec("commit;", db)
 
-    f = fn row ->
+    f1 = fn row ->
       case row do
         {key, val} -> :erlang.put(key, val)
-        _ -> :ok
       end
     end
 
-    Esqlite3.foreach(f, "select * from test_table;", db)
+    f2 = fn names, row ->
+      case row do
+        {key, val} -> :erlang.put(key, {names, val})
+      end
+    end
+
+    Esqlite3.foreach(f1, "select * from test_table;", db)
     10 = :erlang.get(<<"hello1">>)
     11 = :erlang.get(<<"hello2">>)
     12 = :erlang.get(<<"hello3">>)
     13 = :erlang.get(<<"hello4">>)
+
+    Esqlite3.foreach(f2, "select * from test_table;", db)
+    {{:one, :two}, 10} = :erlang.get(<<"hello1">>)
+    {{:one, :two}, 11} = :erlang.get(<<"hello2">>)
+    {{:one, :two}, 12} = :erlang.get(<<"hello3">>)
+    {{:one, :two}, 13} = :erlang.get(<<"hello4">>)
+  end
+
+  test "fetchone" do
+    {:ok, db} = Esqlite3.open(":memory:")
+    :ok = Esqlite3.exec("begin;", db)
+    :ok = Esqlite3.exec("create table test_table(one varchar(10), two int);", db)
+
+    :ok = Esqlite3.exec(["insert into test_table values(", "\"hello1\"", ",", "10);"], db)
+    {:ok, stmt} = Esqlite3.prepare("select * from test_table", db)
+    assert match?({"hello1", 10}, Esqlite3.fetchone(stmt))
   end
 
   test "map" do
@@ -414,5 +444,44 @@ defmodule Esqlite3Test do
     end
 
     :erlang.garbage_collect()
+  end
+
+  test "insert" do
+    {:ok, db} = Esqlite3.open(":memory:")
+    :ok = Esqlite3.exec("begin;", db)
+    :ok = Esqlite3.exec("create table test_table(one varchar(10), two int);", db)
+
+    assert match?(
+             {:ok, 1},
+             Esqlite3.insert(["insert into test_table values(", "\"hello1\"", ",", "10);"], db)
+           )
+
+    assert match?(
+             {:ok, 2},
+             Esqlite3.insert(["insert into test_table values(", "\"hello2\"", ",", "100);"], db)
+           )
+
+    :ok = Esqlite3.exec("commit;", db)
+  end
+
+  test "prepare error" do
+    {:ok, db} = Esqlite3.open(":memory:")
+    Esqlite3.exec("begin;", db)
+    Esqlite3.exec("create table test_table(one varchar(10), two int);", db)
+
+    assert match?(
+             {:error, {:sqlite_error, 'near "insurt": syntax error'}},
+             Esqlite3.prepare("insurt into test_table values(\"one\", 2)", db)
+           )
+
+    catch_throw(Esqlite3.q("selectt * from test_table order by two", db))
+    catch_throw(Esqlite3.q("insert into test_table falues(?1, ?2)", [:one, 2], db))
+
+    assoc = fn names, row ->
+      :lists.zip(:erlang.tuple_to_list(names), :erlang.tuple_to_list(row))
+    end
+
+    catch_throw(Esqlite3.map(assoc, "selectt * from test_table", db))
+    catch_throw(Esqlite3.foreach(assoc, "selectt * from test_table;", db))
   end
 end
