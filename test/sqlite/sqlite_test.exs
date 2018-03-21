@@ -1,6 +1,6 @@
 defmodule SqliteTest do
   use ExUnit.Case
-  alias Sqlite.{Query, Error, Result}
+  alias Sqlite.{Result}
 
   describe "open/close" do
     test "opens a database" do
