@@ -1,4 +1,5 @@
-=======
+[![CircleCI](https://circleci.com/gh/ConnorRigby/esqlite.svg?style=svg)](https://circleci.com/gh/ConnorRigby/esqlite)
+[![Coverage Status](https://coveralls.io/repos/github/ConnorRigby/esqlite/badge.svg?branch=master)](https://coveralls.io/github/ConnorRigby/esqlite?branch=master)
 
 An Erlang nif library for sqlite3.
 
