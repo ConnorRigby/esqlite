@@ -1,27 +1,30 @@
 defmodule Esqlite3 do
   @moduledoc """
-  I ported some erlang. Probably don't use this.
+  Use a Sqlite3 database in Elixir _and_ Erlang!
   """
-
   require Logger
-
   @default_timeout Application.get_env(:esqlite, :default_timeout, 5000)
 
-  @typedoc ""
-  @type connection :: {:connection, connection, reference, term}
-  @type filename :: Path.t()
+  @typep error_tup2 :: {:error, term}
 
-  @type sql :: any
-  @type error_message :: any
-  @type prepared_statement :: any
-  @type value_list :: any
+  @typedoc "Connection record."
+  @type connection :: {:connection, reference, Esqlite3Nif.connection()}
+
+  @typedoc "Statement record."
+  @type prepared_statement :: {:statement, Esqlite3Nif.statement(), connection}
+
+  @typedoc "File to open."
+  @type filename :: Path.t() | iodata
+
+  @typedoc "SQL binary or charlist."
+  @type sql :: iodata
 
   @doc "Opens a sqlite3 database mentioned in Filename."
-  @spec open(filename) :: {:ok, connection} | {:error, term}
+  @spec open(filename) :: {:ok, connection} | error_tup2
   def open(filename), do: open(filename, @default_timeout)
 
   @doc "Opens a sqlite3 database mentioned in Filename."
-  @spec open(filename, timeout) :: {:ok, connection} | {:error, term}
+  @spec open(filename, timeout) :: {:ok, connection} | error_tup2
   def open(filename, timeout) do
     filename = to_charlist(filename)
 
@@ -36,11 +39,11 @@ defmodule Esqlite3 do
   end
 
   @doc "Execute Sql statement, returns the number of affected rows."
-  @spec exec(sql, connection) :: integer | {:error, error_message}
+  @spec exec(sql, connection) :: :ok | error_tup2
   def exec(sql, connection), do: exec(sql, connection, @default_timeout)
 
   @doc "Execute Sql statement, returns the number of affected rows."
-  @spec exec(sql, connection, timeout) :: integer | {:error, error_message}
+  @spec exec(sql, connection, timeout) :: :ok | error_tup2
   def exec(sql, connection, timeout)
 
   def exec(sql, {:connection, _ref, connection}, timeout) do
@@ -49,20 +52,24 @@ defmodule Esqlite3 do
     receive_answer(ref, timeout)
   end
 
+  @doc "Execute SQL statement and bind params to it."
+  @spec exec(sql, Esqlite3Nif.bind_args(), connection) :: :ok | error_tup2
   def exec(sql, params, connection), do: exec(sql, params, connection, @default_timeout)
 
+  @doc "Execute SQL statement and bind params to it."
+  @spec exec(sql, Esqlite3Nif.bind_args(), connection, timeout) :: :ok | error_tup2
   def exec(sql, params, connection, timeout) when is_list(params) do
     {:ok, statement} = prepare(sql, connection, timeout)
-    bind(statement, params)
+    :ok = bind(statement, params)
     step(statement, timeout)
   end
 
   @doc "Return the number of affected rows of last statement."
-  @spec changes(connection) :: integer | {:error, error_message}
+  @spec changes(connection) :: integer | error_tup2
   def changes(connection), do: changes(connection, @default_timeout)
 
   @doc "Return the number of affected rows of last statement."
-  @spec changes(connection, timeout) :: integer | {:error, error_message}
+  @spec changes(connection, timeout) :: {:ok, integer} | error_tup2
   def changes(connection, timeout)
 
   def changes({:connection, _ref, connection}, timeout) do
@@ -72,11 +79,11 @@ defmodule Esqlite3 do
   end
 
   @doc "Insert records, returns the last rowid."
-  @spec insert(sql, connection) :: {:ok, integer} | {:error, error_message}
+  @spec insert(sql, connection) :: {:ok, integer} | error_tup2
   def insert(sql, connection), do: insert(sql, connection, @default_timeout)
 
   @doc "Insert records, returns the last rowid."
-  @spec insert(sql, connection, timeout) :: {:ok, integer} | {:error, error_message}
+  @spec insert(sql, connection, timeout) :: {:ok, integer} | error_tup2
   def insert(sql, connection, timeout)
 
   def insert(sql, {:connection, _ref, connection}, timeout) do
@@ -86,11 +93,11 @@ defmodule Esqlite3 do
   end
 
   @doc "Prepare a statement"
-  @spec prepare(sql, connection) :: {:ok, prepared_statement} | {:error, error_message}
+  @spec prepare(sql, connection) :: {:ok, prepared_statement} | error_tup2
   def prepare(sql, connection), do: prepare(sql, connection, @default_timeout)
 
   @doc "Prepare a statement"
-  @spec prepare(sql, connection, timeout) :: {:ok, prepared_statement} | {:error, error_message}
+  @spec prepare(sql, connection, timeout) :: {:ok, prepared_statement} | error_tup2
   def prepare(sql, connection, timeout)
 
   def prepare(sql, {:connection, _ref, connection} = c, timeout) do
@@ -104,11 +111,10 @@ defmodule Esqlite3 do
   end
 
   @doc "Step into a prepared statement."
-  @spec step(prepared_statement) :: {:ok, any} | {:error, term}
   def step(prepared_statement), do: step(prepared_statement, @default_timeout)
 
   @doc "Step into a prepared statement."
-  @spec step(prepared_statement, timeout) :: {:ok, any} | {:error, term}
+  @spec step(prepared_statement, timeout) :: :"$busy" | :"$done" | {:row, any} | error_tup2
   def step(prepared_statement, timeout)
 
   def step({:statement, prepared_statement, {:connection, _ref, connection}}, timeout) do
@@ -118,11 +124,11 @@ defmodule Esqlite3 do
   end
 
   @doc "Reset the prepared statement back to its initial state."
-  @spec reset(prepared_statement) :: :ok | {:error, error_message}
+  @spec reset(prepared_statement) :: :ok | error_tup2
   def reset(prepared_statement), do: reset(prepared_statement, @default_timeout)
 
   @doc "Reset the prepared statement back to its initial state."
-  @spec reset(prepared_statement, timeout) :: :ok | {:error, error_message}
+  @spec reset(prepared_statement, timeout) :: :ok | error_tup2
   def reset(prepared_statement, timeout)
 
   def reset({:statement, prepared_statement, {:connection, _ref, connection}}, timeout) do
@@ -132,11 +138,11 @@ defmodule Esqlite3 do
   end
 
   @doc "Bind values to prepared statements"
-  @spec bind(prepared_statement, value_list) :: :ok | {:error, error_message}
+  @spec bind(prepared_statement, Esqlite3Nif.bind_args()) :: :ok | error_tup2
   def bind(prepared_statement, args), do: bind(prepared_statement, args, @default_timeout)
 
   @doc "Bind values to prepared statements"
-  @spec bind(prepared_statement, value_list, timeout) :: :ok | {:error, error_message}
+  @spec bind(prepared_statement, Esqlite3Nif.bind_args(), timeout) :: :ok | error_tup2
   def bind(prepared_statement, args, timeout)
 
   def bind({:statement, prepared_statement, {:connection, _ref, connection}}, args, timeout) do
@@ -146,11 +152,11 @@ defmodule Esqlite3 do
   end
 
   @doc "Return the column names of the prepared statement."
-  @spec column_names(prepared_statement) :: [atom] | {:error, error_message}
+  @spec column_names(prepared_statement) :: tuple | error_tup2
   def column_names(prepared_statement), do: column_names(prepared_statement, @default_timeout)
 
   @doc "Return the column names of the prepared statement."
-  @spec column_names(prepared_statement, timeout) :: [atom] | {:error, error_message}
+  @spec column_names(prepared_statement, timeout) :: tuple | error_tup2
   def column_names(prepared_statement, timeout)
 
   def column_names({:statement, prepared_statement, {:connection, _ref, connection}}, timeout) do
@@ -160,11 +166,11 @@ defmodule Esqlite3 do
   end
 
   @doc "Return the column types of the prepared statement."
-  @spec column_types(prepared_statement) :: [atom] | {:error, error_message}
+  @spec column_types(prepared_statement) :: tuple | error_tup2
   def column_types(prepared_statement), do: column_types(prepared_statement, @default_timeout)
 
   @doc "Return the column types of the prepared statement."
-  @spec column_types(prepared_statement) :: [atom] | {:error, error_message}
+  @spec column_types(prepared_statement, timeout) :: tuple | error_tup2
   def column_types(prepared_statement, timeout)
 
   def column_types({:statement, prepared_statement, {:connection, _ref, connection}}, timeout) do
@@ -174,11 +180,11 @@ defmodule Esqlite3 do
   end
 
   @doc "Close the database"
-  @spec close(connection) :: :ok | {:error, error_message}
+  @spec close(connection) :: :ok | error_tup2
   def close(connection), do: close(connection, @default_timeout)
 
   @doc "Close the database"
-  @spec close(connection) :: :ok | {:error, error_message}
+  @spec close(connection, timeout) :: :ok | error_tup2
   def close(connection, timeout)
 
   def close({:connection, _ref, connection}, timeout) do
@@ -317,7 +323,7 @@ defmodule Esqlite3 do
         resp
 
       {:esqlite3, _ref, _resp} = stale ->
-        Logger.warn("Ignoring stale answer: #{inspect(stale)}")
+        :ok = Logger.warn("Ignoring stale answer: #{inspect(stale)}")
         passed_mics = :timer.now_diff(:os.timestamp(), start) |> div(1000)
 
         new_timeout =
@@ -344,50 +350,4 @@ defmodule Esqlite3 do
   @compile {:inline, column_names: 1}
   @compile {:inline, column_types: 1}
   @compile {:inline, close: 1}
-end
-
-defmodule :esqlite3 do
-  defdelegate open(filename), to: Esqlite3
-  defdelegate open(filename, timeout), to: Esqlite3
-
-  defdelegate exec(sql, connection), to: Esqlite3
-  defdelegate exec(sql, params, connection), to: Esqlite3
-
-  defdelegate changes(connection), to: Esqlite3
-  defdelegate changes(connection, timeout), to: Esqlite3
-
-  defdelegate insert(sql, connection), to: Esqlite3
-  defdelegate insert(sql, connection, timeout), to: Esqlite3
-
-  defdelegate prepare(sql, connection), to: Esqlite3
-  defdelegate prepare(sql, connection, timeout), to: Esqlite3
-
-  defdelegate step(statement), to: Esqlite3
-  defdelegate step(statement, timeout), to: Esqlite3
-
-  defdelegate reset(prepared_statement), to: Esqlite3
-  defdelegate reset(prepared_statement, timeout), to: Esqlite3
-
-  defdelegate bind(statement, args), to: Esqlite3
-  defdelegate bind(prepared_statement, args, timeout), to: Esqlite3
-
-  defdelegate column_names(statement), to: Esqlite3
-  defdelegate column_names(statement, timeout), to: Esqlite3
-
-  defdelegate column_types(statement), to: Esqlite3
-  defdelegate column_types(statement, timeout), to: Esqlite3
-
-  defdelegate close(connection), to: Esqlite3
-  defdelegate close(connection, timeout), to: Esqlite3
-
-  defdelegate fetchone(statement), to: Esqlite3
-
-  defdelegate fetchall(statement), to: Esqlite3
-
-  defdelegate q(sql, connection), to: Esqlite3
-  defdelegate q(sql, args, connection), to: Esqlite3
-
-  defdelegate map(f, sql, connection), to: Esqlite3
-
-  defdelegate foreach(f, sql, connection), to: Esqlite3
 end
