@@ -119,8 +119,13 @@ defmodule Esqlite3 do
 
   def step({:statement, prepared_statement, {:connection, _ref, connection}}, timeout) do
     ref = make_ref()
-    :ok = Esqlite3Nif.step(connection, prepared_statement, ref, self())
-    receive_answer(ref, timeout)
+    :ok = Esqlite3Nif.multi_step(connection, prepared_statement, 1, ref, self())
+    case receive_answer(ref, timeout) do
+      {:rows, [row | []]} -> {:row, row}
+      {:"$done", []} -> :"$done"
+      {:"$busy", []} -> :"$busy"
+      other -> other
+    end
   end
 
   @doc "Reset the prepared statement back to its initial state."

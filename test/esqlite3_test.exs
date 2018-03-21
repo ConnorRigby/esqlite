@@ -374,7 +374,7 @@ defmodule Esqlite3Test do
     {:ok, db} = Esqlite3.open(":memory:")
     {:ok, stmt} = Esqlite3.prepare("select sqlite_version() as sqlite_version;", db)
     {:sqlite_version} = Esqlite3.column_names(stmt)
-    assert match?({:row, {<<"3.18.0">>}}, Esqlite3.step(stmt))
+    assert match?({:row, {<<"3.24.0">>}}, Esqlite3.step(stmt))
   end
 
   test "sqlite source id" do
@@ -384,7 +384,7 @@ defmodule Esqlite3Test do
 
     assert match?(
              {:row,
-              {<<"2017-03-28 18:48:43 424a0d380332858ee55bdebc4af3789f74e70a2b3ba1cf29d84b9b4bcf3e2e37">>}},
+              {<<"2018-06-04 19:24:41 c7ee0833225bfd8c5ec2f9bf62b97c4e04d03bd9566366d5221ac8fb199a87ca">>}},
              Esqlite3.step(stmt)
            )
   end

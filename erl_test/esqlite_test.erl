@@ -5,7 +5,6 @@
 -module(esqlite_test).
 
 -include_lib("eunit/include/eunit.hrl").
--dialyzer([{nowarn_function, bind_test/0}, unknown]).
 
 open_single_database_test() ->
     {ok, _C1} = esqlite3:open("test.db"),
@@ -44,8 +43,8 @@ simple_query_test() ->
 
 prepare_test() ->
     {ok, Db} = esqlite3:open(":memory:"),
-    ok = esqlite3:exec("begin;", Db),
-    ok = esqlite3:exec("create table test_table(one varchar(10), two int);", Db),
+    esqlite3:exec("begin;", Db),
+    esqlite3:exec("create table test_table(one varchar(10), two int);", Db),
     {ok, Statement} = esqlite3:prepare("insert into test_table values(\"one\", 2)", Db),
 
     '$done' = esqlite3:step(Statement),
@@ -55,8 +54,8 @@ prepare_test() ->
 
     %% Check if the values are there.
     [{<<"one">>, 2}, {<<"hello4">>, 13}] = esqlite3:q("select * from test_table order by two", Db),
-    ok = esqlite3:exec("commit;", Db),
-    ok = esqlite3:close(Db),
+    esqlite3:exec("commit;", Db),
+    esqlite3:close(Db),
 
     ok.
 
@@ -256,7 +255,10 @@ foreach_test() ->
 
     F = fun(Row) ->
 		case Row of
-		    {Key, Value} -> put(Key, Value)
+		    {Key, Value} ->
+			put(Key, Value);
+		    _ ->
+			ok
 		end
 	end,
 
