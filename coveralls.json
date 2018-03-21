@@ -1,7 +1,7 @@
 {
-  "skip_files": [
-    "lib/esqlite3_nif.ex",
-    "lib/esqlite_erlang_def.ex",
-    "erl_test/"
-  ]
+ "skip_files": [
+  "lib/esqlite3/esqlite3_nif.ex",
+  "lib/esqlite3/esqlite_erlang_def.ex",
+  "erl_test/"
+ ]
 }

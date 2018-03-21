@@ -370,13 +370,13 @@ defmodule Esqlite3Test do
     {:ok, db} = Esqlite3.open(":memory:")
 
     # Not sql
-    {:error, {:sqlite_error, _Msg1}} = Esqlite3.exec("dit is geen sql", db)
+    {:error, {:sqlite_error, _msg1}} = Esqlite3.exec("dit is geen sql", db)
 
     # Database test does not exist
-    {:error, {:sqlite_error, _Msg2}} = Esqlite3.exec("select * from test;", db)
+    {:error, {:sqlite_error, _msg2}} = Esqlite3.exec("select * from test;", db)
 
     # Opening non-existant database
-    {:error, {:cantopen, _Msg3}} = Esqlite3.open("/dit/bestaat/niet")
+    {:error, {:cantopen, _msg3}} = Esqlite3.open("/dit/bestaat/niet")
   end
 
   test "prepare and close connection" do
