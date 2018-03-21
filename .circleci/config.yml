@@ -24,6 +24,7 @@ jobs:
             - _build
             - deps
             - ~/.mix
+            - priv
       - restore_cache:
           keys:
             - v3-plt-cache-{{ checksum "mix.lock" }}
