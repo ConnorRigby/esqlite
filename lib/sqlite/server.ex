@@ -8,19 +8,22 @@ defmodule Sqlite.Server do
     defstruct [:database, :filename]
     @typedoc false
     @type t :: %__MODULE__{
-      database: Esqlite3.connection | :closed,
-      filename: Esqlite3.filename,
-    }
+            database: Esqlite3.connection() | :closed,
+            filename: Esqlite3.filename()
+          }
   end
 
   @impl GenServer
   def init(opts) do
     filename = Keyword.fetch!(opts, :database)
     timeout = Keyword.fetch!(opts, :timeout)
+
     case Esqlite3.open(filename, timeout) do
       {:ok, db} ->
-        {:ok, struct(State, [database: db, filename: filename])}
-      err -> {:stop, err}
+        {:ok, struct(State, database: db, filename: filename)}
+
+      err ->
+        {:stop, err}
     end
   end
 
@@ -29,22 +32,23 @@ defmodule Sqlite.Server do
     unless state.database == :closed do
       :ok = Esqlite3.close(state.database)
     end
+
     :ok
   end
 
   @impl GenServer
   def handle_call({:query, query, params, _opts}, _from, state) do
-    Esqlite3.q(query.statement, params, state.database) |> IO.inspect
+    Esqlite3.q(query.statement, params, state.database) |> IO.inspect()
     {:reply, {:error, %Sqlite.Error{message: "Not implemented"}}, state}
   end
 
   def handle_call({:prepare, query, opts}, _from, state) do
-    Esqlite3.prepare(query.statement, state.database, opts[:timeout]) |> IO.inspect
+    Esqlite3.prepare(query.statement, state.database, opts[:timeout]) |> IO.inspect()
     {:reply, {:error, %Sqlite.Error{message: "Not implemented"}}, state}
   end
 
   def handle_call({:execute, query, params, opts}, _from, state) do
-    Esqlite3.exec(query.statement, params, state.database, opts[:timeout]) |> IO.inspect
+    Esqlite3.exec(query.statement, params, state.database, opts[:timeout]) |> IO.inspect()
     {:reply, {:error, %Sqlite.Error{message: "Not implemented"}}, state}
   end
 
@@ -55,6 +59,5 @@ defmodule Sqlite.Server do
     end
   end
 
-  defp error(reason, _state), do: %Sqlite.Error{message: reason}
-
+  defp error(reason, _state), do: {:error, %Sqlite.Error{message: reason}}
 end

@@ -55,7 +55,9 @@ defmodule Sqlite do
           )
 
         {:ok, conn}
-      {:error, reason} -> {:error, reason}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -175,37 +177,16 @@ defmodule Sqlite do
   end
 
   @doc """
-  Closes an (extended) prepared query and returns `:ok` or
-  `{:error, %Sqlite.Error{}}` if there was an error. Closing a query releases
-  any resources held by sqlite3 for a prepared query with that name. See
-  `Sqlite.Query` for the query data.
-
-  ## Examples
-      query = Sqlite.prepare!(conn, "", "CREATE TABLE posts (id serial, title text)")
-      Sqlite.close(conn, query)
+  Closes the connection to the database.
   """
-  @spec close(conn, Sqlite.Query.t(), Keyword.t()) :: :ok | {:error, Sqlite.Error.t()}
-
-  def close(conn, query \\ nil, opts \\ [])
-  def close(conn, query, opts) do
+  @spec close(conn, Keyword.t()) :: :ok | {:error, Sqlite.Error.t()}
+  def close(conn, opts \\ []) when is_list(opts) do
     opts = defaults(opts)
-
-    do_close = fn(conn, opts) ->
-      GenServer.call(conn.pid, {:close, opts}, call_timeout(opts))
-      |> case do
-        :ok -> :ok
-        {:error, %Sqlite.Error{}} = ok -> ok
-        err -> unexpected_response(err, :close)
-      end
-    end
-
-    if query do
-      case execute(query, [], opts) do
-        {:error, reason} -> {:error, reason}
-        {:ok, _result} -> do_close.(conn, opts)
-      end
-    else
-      do_close.(conn, opts)
+    GenServer.call(conn.pid, {:close, opts}, call_timeout(opts))
+    |> case do
+      :ok -> :ok
+      {:error, %Sqlite.Error{}} = ok -> ok
+      err -> unexpected_response(err, :close)
     end
   end
 
@@ -213,9 +194,9 @@ defmodule Sqlite do
   Closes an (extended) prepared query and returns `:ok` or raises
   `Sqlite.Error` if there was an error. See `close/3`.
   """
-  @spec close!(conn, Sqlite.Query.t(), Keyword.t()) :: :ok
-  def close!(conn, query \\ nil, opts \\ []) do
-    case close(conn, query, opts) do
+  @spec close!(conn, Keyword.t()) :: :ok
+  def close!(conn, opts \\ []) do
+    case close(conn, opts) do
       :ok -> :ok
       {:error, reason} -> raise Sqlite.Error, %{reason: reason}
     end
