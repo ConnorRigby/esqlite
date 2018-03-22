@@ -59,6 +59,7 @@ defmodule Esqlite3Nif do
   @spec reset(connection, statement, reference, pid) :: :ok | error_tup2
   def reset(_db, _stmt, _ref, _dest), do: :erlang.nif_error(:nif_library_not_loaded)
 
+  @doc "Finalize a statement."
   @spec finalize(connection, statement, reference, pid) :: :ok | error_tup2
   def finalize(_db, _stmt, _ref, _dest), do: :erlang.nif_error(:nif_library_not_loaded)
 

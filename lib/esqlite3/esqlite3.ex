@@ -201,6 +201,7 @@ defmodule Esqlite3 do
   @doc "Execute a sql statement, returns a list with tuples."
   def q(sql, connection), do: q(sql, [], connection)
 
+  @doc "Execute a sql statement, returns a list with tuples."
   def q(sql, [], connection) do
     case prepare(sql, connection) do
       {:ok, statement} -> fetchall(statement)
@@ -219,9 +220,7 @@ defmodule Esqlite3 do
     end
   end
 
-  @doc """
-  Enumerate results with a function `f`.
-  """
+  @doc "Enumerate results with a function `f`."
   def map(f, sql, connection) do
     case prepare(sql, connection) do
       {:ok, statement} -> map_s(f, statement)
@@ -247,6 +246,7 @@ defmodule Esqlite3 do
     end
   end
 
+  @doc "Apply a function over the results of SQL query."
   def foreach(f, sql, connection) do
     case prepare(sql, connection) do
       {:ok, statement} -> foreach_s(f, statement)
@@ -284,6 +284,7 @@ defmodule Esqlite3 do
     end
   end
 
+  @doc "Return the results of stepping into a `statement`."
   def fetchone(statement) do
     case try_step(statement, 0) do
       :"$done" -> :ok
@@ -292,6 +293,7 @@ defmodule Esqlite3 do
     end
   end
 
+  @doc "Return the results after enumerating an entire `statement`."
   def fetchall(statement) do
     case try_step(statement, 0) do
       :"$done" ->
