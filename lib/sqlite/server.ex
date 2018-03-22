@@ -38,56 +38,40 @@ defmodule Sqlite.Server do
 
   @impl GenServer
   def handle_call({:query, sql, params, opts}, _from, state) do
-    try do
-      with {:ok, %Query{} = q} <- build_query(sql, opts, state.database),
-           :ok <- Esqlite3.bind(q.statement, params) do
-        r = q.statement |> Esqlite3.fetchall() |> build_result(q, state)
-        {:reply, r, state}
-      else
-        err -> {:reply, error(err, state), state}
-      end
-    catch
+    with {:ok, %Query{} = q} <- build_query(sql, opts, state.database),
+         :ok <- Esqlite3.bind(q.statement, params) do
+      r = q.statement |> Esqlite3.fetchall() |> build_result(q, state)
+      {:reply, r, state}
+    else
       err -> {:reply, error(err, state), state}
     end
   end
 
   def handle_call({:release_query, query, opts}, _from, state) do
-    try do
-      case Esqlite3.reset(query.statement, opts[:timeout]) do
-        :ok -> {:reply, :ok, state}
-        err -> {:reply, error(err, state), state}
-      end
-    catch
+    case Esqlite3.reset(query.statement, opts[:timeout]) do
+      :ok -> {:reply, :ok, state}
       err -> {:reply, error(err, state), state}
     end
   end
 
   def handle_call({:prepare, sql, opts}, _from, state) do
-    try do
-      case build_query(sql, opts, state.database) do
-        {:ok, %Query{} = q} ->
-          {:reply, {:ok, q}, state}
+    case build_query(sql, opts, state.database) do
+      {:ok, %Query{} = q} ->
+        {:reply, {:ok, q}, state}
 
-        err ->
-          {:reply, error(err, state), state}
-      end
-    catch
-      err -> {:reply, error(err, state), state}
+      err ->
+        {:reply, error(err, state), state}
     end
   end
 
   def handle_call({:execute, query, params, opts}, _from, state) do
-    try do
-      case Esqlite3.bind(query.statement, params, opts[:timeout]) do
-        :ok ->
-          r = query.statement |> Esqlite3.fetchall() |> build_result(query, state)
-          {:reply, r, state}
+    case Esqlite3.bind(query.statement, params, opts[:timeout]) do
+      :ok ->
+        r = query.statement |> Esqlite3.fetchall() |> build_result(query, state)
+        {:reply, r, state}
 
-        err ->
-          {:reply, error(err, state), state}
-      end
-    catch
-      err -> {:reply, error(err, state), state}
+      err ->
+        {:reply, error(err, state), state}
     end
   end
 

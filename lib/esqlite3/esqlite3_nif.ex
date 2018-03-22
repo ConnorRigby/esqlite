@@ -23,8 +23,8 @@ defmodule Esqlite3Nif do
   @type bind_args :: [bind_arg]
 
   @doc "Start a low level thread which will can handle sqlite3 calls."
-  @spec start() :: {:ok, connection} | error_tup2
-  def start(), do: :erlang.nif_error(:nif_library_not_loaded)
+  @spec start :: {:ok, connection} | error_tup2
+  def start, do: :erlang.nif_error(:nif_library_not_loaded)
 
   @doc "Open the specified sqlite3 database."
   @spec open(connection, reference, pid, Path.t()) :: :ok | error_tup2

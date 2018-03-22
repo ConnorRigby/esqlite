@@ -41,7 +41,7 @@ defmodule Sqlite do
   """
   @spec open(Keyword.t(), GenServer.options()) :: {:ok, conn} | {:error, term}
   def open(opts, gen_server_opts \\ []) when is_list(opts) do
-    opts = Sqlite.Utils.default_opts(opts)
+    opts = default_opts(opts)
 
     case GenServer.start_link(Sqlite.Server, opts, gen_server_opts) do
       {:ok, pid} ->
@@ -237,5 +237,10 @@ defmodule Sqlite do
     ]
 
     Keyword.merge(defaults, opts)
+  end
+
+  @spec default_opts(Keyword.t()) :: Keyword.t()
+  def default_opts(opts) do
+    Keyword.merge([timeout: Application.get_env(:esqlite, :default_timeout, 5000)], opts)
   end
 end
