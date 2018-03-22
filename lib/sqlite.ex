@@ -78,8 +78,9 @@ defmodule Sqlite do
   def query(conn, sql, params, opts \\ []) do
     opts = opts |> defaults()
 
-    GenServer.call(conn.pid, {:query, sql, params, opts}, call_timeout(opts))
-    |> case do
+    r = GenServer.call(conn.pid, {:query, sql, params, opts}, call_timeout(opts))
+
+    case r do
       {:ok, %Sqlite.Result{}} = ok -> ok
       {:error, %Sqlite.Error{}} = ok -> ok
     end
@@ -110,8 +111,9 @@ defmodule Sqlite do
   def prepare(conn, sql, opts \\ []) do
     opts = opts |> defaults()
 
-    GenServer.call(conn.pid, {:prepare, sql, opts}, call_timeout(opts))
-    |> case do
+    r = GenServer.call(conn.pid, {:prepare, sql, opts}, call_timeout(opts))
+
+    case r do
       {:ok, %Sqlite.Query{}} = ok -> ok
       {:error, %Sqlite.Error{}} = ok -> ok
     end
@@ -140,8 +142,9 @@ defmodule Sqlite do
   def release_query(conn, query, opts \\ []) do
     opts = opts |> defaults()
 
-    GenServer.call(conn.pid, {:release_query, query, opts}, call_timeout(opts))
-    |> case do
+    r = GenServer.call(conn.pid, {:release_query, query, opts}, call_timeout(opts))
+
+    case r do
       :ok -> :ok
       {:error, %Sqlite.Error{}} = ok -> ok
     end
@@ -184,8 +187,9 @@ defmodule Sqlite do
   def execute(conn, query, params, opts \\ []) do
     opts = defaults(opts)
 
-    GenServer.call(conn.pid, {:execute, query, params, opts}, call_timeout(opts))
-    |> case do
+    r = GenServer.call(conn.pid, {:execute, query, params, opts}, call_timeout(opts))
+
+    case r do
       {:ok, %Sqlite.Result{}} = ok -> ok
       {:error, %Sqlite.Error{}} = ok -> ok
     end
@@ -210,8 +214,9 @@ defmodule Sqlite do
   def close(conn, opts \\ []) when is_list(opts) do
     opts = defaults(opts)
 
-    GenServer.call(conn.pid, {:close, opts}, call_timeout(opts))
-    |> case do
+    r = GenServer.call(conn.pid, {:close, opts}, call_timeout(opts))
+
+    case r do
       :ok -> :ok
       {:error, %Sqlite.Error{}} = ok -> ok
     end

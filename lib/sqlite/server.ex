@@ -41,7 +41,7 @@ defmodule Sqlite.Server do
     try do
       with {:ok, %Query{} = q} <- build_query(sql, opts, state.database),
            :ok <- Esqlite3.bind(q.statement, params) do
-        r = Esqlite3.fetchall(q.statement) |> build_result(q, state)
+        r = q.statement |> Esqlite3.fetchall() |> build_result(q, state)
         {:reply, r, state}
       else
         err -> {:reply, error(err, state), state}
@@ -67,6 +67,7 @@ defmodule Sqlite.Server do
       case build_query(sql, opts, state.database) do
         {:ok, %Query{} = q} ->
           {:reply, {:ok, q}, state}
+
         err ->
           {:reply, error(err, state), state}
       end
@@ -79,7 +80,7 @@ defmodule Sqlite.Server do
     try do
       case Esqlite3.bind(query.statement, params, opts[:timeout]) do
         :ok ->
-          r = Esqlite3.fetchall(query.statement) |> build_result(query, state)
+          r = query.statement |> Esqlite3.fetchall() |> build_result(query, state)
           {:reply, r, state}
 
         err ->
@@ -117,8 +118,8 @@ defmodule Sqlite.Server do
 
     case Esqlite3.prepare(sql, database, timeout) do
       {:ok, statement} ->
-        cn = Esqlite3.column_names(statement, timeout) |> Tuple.to_list()
-        ct = Esqlite3.column_types(statement, timeout) |> Tuple.to_list()
+        cn = statement |> Esqlite3.column_names(timeout) |> Tuple.to_list()
+        ct = statement |> Esqlite3.column_types(timeout) |> Tuple.to_list()
         {:ok, %Sqlite.Query{column_names: cn, column_types: ct, statement: statement, sql: sql}}
 
       err ->

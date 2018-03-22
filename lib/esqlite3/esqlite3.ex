@@ -332,7 +332,7 @@ defmodule Esqlite3 do
 
       {:esqlite3, _ref, _resp} = stale ->
         :ok = Logger.warn("Ignoring stale answer: #{inspect(stale)}")
-        passed_mics = :timer.now_diff(:os.timestamp(), start) |> div(1000)
+        passed_mics = :os.timestamp() |> :timer.now_diff(start) |> div(1000)
 
         new_timeout =
           case timeout - passed_mics do

@@ -24,6 +24,7 @@ jobs:
             - v3-plt-cache
       - run: mix dialyzer --plt
       - run: mix dialyzer --halt-exit-status
+      - run: mix credo -a
       - run:
           command: mix coveralls.circle
           environment:

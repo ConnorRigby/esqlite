@@ -56,7 +56,8 @@ defmodule Esqlite.MixProject do
       {:dialyxir, "~> 0.5.1", runtime: false, only: :dev},
       {:excoveralls, "~> 0.8", only: :test, optional: true},
       {:ex_doc, "~> 0.18.3", runtime: false, only: :docs},
-      {:inch_ex, only: :docs, runtime: false}
+      {:inch_ex, only: :docs, runtime: false},
+      {:credo, "~> 0.9.0-rc1", only: [:dev, :test], runtime: false}
     ]
   end
 end
