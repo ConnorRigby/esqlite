@@ -1,2 +1,5 @@
 :code.ensure_loaded(:esqlite_test)
-:esqlite_test.test()
+case :esqlite_test.test() do
+  :error -> System.halt(1)
+  other -> other
+end

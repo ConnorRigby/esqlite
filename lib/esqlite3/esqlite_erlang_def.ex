@@ -1,6 +1,7 @@
 defmodule :esqlite3 do
   defdelegate open(filename), to: Esqlite3
-  defdelegate open(filename, timeout), to: Esqlite3
+  defdelegate open(filename, flags), to: Esqlite3
+  defdelegate open(filename, flags, timeout), to: Esqlite3
   defdelegate exec(sql, connection), to: Esqlite3
   defdelegate exec(sql, params, connection), to: Esqlite3
   defdelegate changes(connection), to: Esqlite3
@@ -19,6 +20,8 @@ defmodule :esqlite3 do
   defdelegate column_names(statement, timeout), to: Esqlite3
   defdelegate column_types(statement), to: Esqlite3
   defdelegate column_types(statement, timeout), to: Esqlite3
+  defdelegate enable_load_extension(connection), to: Esqlite3
+  defdelegate enable_load_extension(connection, timeout), to: Esqlite3
   defdelegate close(connection), to: Esqlite3
   defdelegate close(connection, timeout), to: Esqlite3
   defdelegate fetchone(statement), to: Esqlite3

@@ -83,6 +83,10 @@ defmodule Esqlite3Nif do
   @spec insert(connection, reference, pid, sql) :: :ok | error_tup2
   def insert(_db, _ref, _dest, _sql), do: :erlang.nif_error(:nif_library_not_loaded)
 
+  @doc "Enable extension loading."
+  @spec enable_load_extension(connection, reference, pid) :: :ok | error_tup2
+  def enable_load_extension(_db, _ref, _dest), do: :erlang.nif_error(:nif_library_not_loaded)
+
   @on_load :load_nif
   @doc false
   def load_nif do

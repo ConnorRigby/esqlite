@@ -201,6 +201,19 @@ defmodule Esqlite3 do
     receive_answer(ref, timeout)
   end
 
+  @doc "Enable the database to load extensions"
+  @spec enable_load_extension(connection) :: :ok | error_tup2
+  def enable_load_extension(connection), do: enable_load_extension(connection, @default_timeout)
+
+  @doc "Enable the database to load extensions"
+  @spec enable_load_extension(connection, timeout) :: :ok | error_tup2
+  def enable_load_extension(connection, timeout)
+  def enable_load_extension({:connection, _ref, connection}, timeout) do
+    ref = make_ref()
+    :ok = Esqlite3Nif.enable_load_extension(connection, ref, self())
+    receive_answer(ref, timeout)
+  end
+
   @doc "Execute a sql statement, returns a list with tuples."
   def q(sql, connection), do: q(sql, [], connection)
 

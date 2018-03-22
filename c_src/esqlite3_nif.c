@@ -60,7 +60,8 @@ typedef enum {
     cmd_column_types,
     cmd_close,
     cmd_stop,
-    cmd_insert
+    cmd_insert,
+    cmd_enable_load_extension
 } command_type;
 
 typedef struct {
@@ -625,6 +626,14 @@ do_column_types(ErlNifEnv *env, sqlite3_stmt *stmt)
     enif_free(array);
     return column_types;
 }
+static ERL_NIF_TERM
+do_enable_extension(ErlNifEnv *env, esqlite_connection *conn, const ERL_NIF_TERM arg)
+{
+    int rc = sqlite3_enable_load_extension(conn->db, 1);
+    if(rc != SQLITE_OK)
+        return make_sqlite3_error_tuple(env, rc, conn->db);
+    return make_atom(env, "ok");
+}
 
 static ERL_NIF_TERM
 do_close(ErlNifEnv *env, esqlite_connection *conn, const ERL_NIF_TERM arg)
@@ -673,6 +682,8 @@ evaluate_command(esqlite_command *cmd, esqlite_connection *conn)
 	    return do_close(cmd->env, conn, cmd->arg);
 	case cmd_insert:
 	    return do_insert(cmd->env, conn, cmd->arg);
+  case cmd_enable_load_extension:
+      return do_enable_extension(cmd->env, conn, cmd->arg);
     default:
 	    return make_error_tuple(cmd->env, "invalid_command");
     }
@@ -1145,6 +1156,34 @@ esqlite_column_types(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
 }
 
 /*
+* Enable extension loading
+*/
+static ERL_NIF_TERM
+esqlite_enable_load_extension(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+   esqlite_connection *conn;
+   esqlite_command *cmd = NULL;
+   ErlNifPid pid;
+
+   if(!enif_get_resource(env, argv[0], esqlite_connection_type, (void **) &conn))
+    return enif_make_badarg(env);
+   if(!enif_is_ref(env, argv[1]))
+    return make_error_tuple(env, "invalid_ref");
+   if(!enif_get_local_pid(env, argv[2], &pid))
+    return make_error_tuple(env, "invalid_pid");
+
+   cmd = command_create();
+   if(!cmd)
+    return make_error_tuple(env, "command_create_failed");
+
+   cmd->type = cmd_enable_load_extension;
+   cmd->ref = enif_make_copy(cmd->env, argv[1]);
+   cmd->pid = pid;
+
+   return push_command(env, conn, cmd);
+}
+
+/*
  * Close the database
  */
 static ERL_NIF_TERM
@@ -1220,7 +1259,8 @@ static ErlNifFunc nif_funcs[] = {
     {"bind", 5, esqlite_bind},
     {"column_names", 4, esqlite_column_names},
     {"column_types", 4, esqlite_column_types},
-    {"close", 3, esqlite_close}
+    {"close", 3, esqlite_close},
+    {"enable_load_extension", 3, esqlite_enable_load_extension}
 };
 
 ERL_NIF_INIT(Elixir.Esqlite3Nif, nif_funcs, on_load, on_reload, on_upgrade, NULL);

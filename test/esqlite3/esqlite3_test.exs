@@ -23,6 +23,12 @@ defmodule Esqlite3Test do
       Esqlite3.exec("create table test_table(one varchar(10), two int);", db)
   end
 
+  test "enable loadable extensions" do
+    {:ok, db} = Esqlite3.open(":memory:")
+    assert match?(:ok, Esqlite3.enable_load_extension(db))
+    :ok = Esqlite3.exec("create virtual table test_table using fts3(content text);", db)
+  end
+
   test "simple query" do
     {:ok, db} = Esqlite3.open(":memory:")
     :ok = Esqlite3.exec("begin;", db)
