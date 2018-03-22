@@ -39,3 +39,7 @@ jobs:
           command: mix coveralls.circle
           environment:
             MIX_ENV: test
+      - run:
+          command: mix do deps.get, deps.compile inchci.plt_add_deps
+          environment:
+            MIX_ENV: docs
