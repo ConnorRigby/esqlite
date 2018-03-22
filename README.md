@@ -1,5 +1,7 @@
 [![CircleCI](https://circleci.com/gh/ConnorRigby/esqlite.svg?style=svg)](https://circleci.com/gh/ConnorRigby/esqlite)
 [![Coverage Status](https://coveralls.io/repos/github/ConnorRigby/esqlite/badge.svg?branch=master)](https://coveralls.io/github/ConnorRigby/esqlite?branch=master)
+[![Inline docs](http://inch-ci.org/github/connorrigby/esqlite.svg?branch=master)](http://inch-ci.org/github/connorrigby/esqlite)
+[![Deps Status](https://beta.hexfaktor.org/badge/all/github/ConnorRigby/esqlite.svg)](https://beta.hexfaktor.org/github/ConnorRigby/esqlite)
 
 An Erlang nif library for sqlite3.
 
