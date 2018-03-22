@@ -4,13 +4,9 @@ defmodule Sqlite.Error do
   defexception [:message]
 
   @typedoc "Various SQLite error."
-  @type t :: %Sqlite.Error{}
+  @type t :: %Sqlite.Error{
+          message: binary
+        }
 
-  def exception(%{reason: message}) do
-    %Sqlite.Error{message: message}
-  end
-
-  def message(e) do
-    e.message
-  end
+  def message(e), do: e.message
 end

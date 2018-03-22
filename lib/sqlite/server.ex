@@ -1,7 +1,7 @@
 defmodule Sqlite.Server do
   @moduledoc "GenServer implementation for Sqlite."
   use GenServer
-  # alias Sqlite.{Query, Error, Result}
+  alias Sqlite.Query
 
   defmodule State do
     @moduledoc false
@@ -37,27 +37,102 @@ defmodule Sqlite.Server do
   end
 
   @impl GenServer
-  def handle_call({:query, query, params, _opts}, _from, state) do
-    Esqlite3.q(query.statement, params, state.database) |> IO.inspect()
-    {:reply, {:error, %Sqlite.Error{message: "Not implemented"}}, state}
+  def handle_call({:query, sql, params, opts}, _from, state) do
+    try do
+      with {:ok, %Query{} = q} <- build_query(sql, opts, state.database),
+           :ok <- Esqlite3.bind(q.statement, params) do
+        r = Esqlite3.fetchall(q.statement) |> build_result(q, state)
+        {:reply, r, state}
+      else
+        err -> {:reply, error(err, state), state}
+      end
+    catch
+      err -> {:reply, error(err, state), state}
+    end
   end
 
-  def handle_call({:prepare, query, opts}, _from, state) do
-    Esqlite3.prepare(query.statement, state.database, opts[:timeout]) |> IO.inspect()
-    {:reply, {:error, %Sqlite.Error{message: "Not implemented"}}, state}
+  def handle_call({:release_query, query, opts}, _from, state) do
+    try do
+      case Esqlite3.reset(query.statement, opts[:timeout]) do
+        :ok -> {:reply, :ok, state}
+        err -> {:reply, error(err, state), state}
+      end
+    catch
+      err -> {:reply, error(err, state), state}
+    end
+  end
+
+  def handle_call({:prepare, sql, opts}, _from, state) do
+    try do
+      case build_query(sql, opts, state.database) do
+        {:ok, %Query{} = q} ->
+          {:reply, {:ok, q}, state}
+        err ->
+          {:reply, error(err, state), state}
+      end
+    catch
+      err -> {:reply, error(err, state), state}
+    end
   end
 
   def handle_call({:execute, query, params, opts}, _from, state) do
-    Esqlite3.exec(query.statement, params, state.database, opts[:timeout]) |> IO.inspect()
-    {:reply, {:error, %Sqlite.Error{message: "Not implemented"}}, state}
+    try do
+      case Esqlite3.bind(query.statement, params, opts[:timeout]) do
+        :ok ->
+          r = Esqlite3.fetchall(query.statement) |> build_result(query, state)
+          {:reply, r, state}
+
+        err ->
+          {:reply, error(err, state), state}
+      end
+    catch
+      err -> {:reply, error(err, state), state}
+    end
   end
 
-  def handle_call({:close, _opts}, _from, state) do
-    case Esqlite3.close(state.database) do
+  def handle_call({:close, opts}, _from, state) do
+    case Esqlite3.close(state.database, opts[:timeout]) do
       :ok -> {:stop, :normal, :ok, %{state | database: :closed}}
       {:error, reason} -> {:stop, reason, error(reason, state), state}
     end
   end
 
+  @spec error(any, State.t()) :: {:error, Sqlite.Error.t()}
+
+  defp error({:error, {:sqlite_error, msg}}, _state),
+    do: {:error, %Sqlite.Error{message: to_string(msg)}}
+
+  defp error({:error, {:constraint, msg}}, _state),
+    do: {:error, %Sqlite.Error{message: to_string(msg)}}
+
+  defp error({:error, msg}, _state) when is_atom(msg),
+    do: {:error, %Sqlite.Error{message: to_string(msg)}}
+
   defp error(reason, _state), do: {:error, %Sqlite.Error{message: reason}}
+
+  @spec build_query(iodata, Keyword.t(), Esqlite3.connection()) ::
+          {:ok, Sqlite.Query.t()} | {:error, term}
+  defp build_query(sql, opts, database) do
+    timeout = opts[:timeout]
+
+    case Esqlite3.prepare(sql, database, timeout) do
+      {:ok, statement} ->
+        cn = Esqlite3.column_names(statement, timeout) |> Tuple.to_list()
+        ct = Esqlite3.column_types(statement, timeout) |> Tuple.to_list()
+        {:ok, %Sqlite.Query{column_names: cn, column_types: ct, statement: statement, sql: sql}}
+
+      err ->
+        err
+    end
+  end
+
+  @spec build_result(any, Sqlite.Query.t(), State.t()) ::
+          {:ok, Sqlite.Result.t()} | {:error, Sqlite.Error.t()}
+  defp build_result({:error, _} = err, _q, state), do: error(err, state)
+
+  defp build_result(result, %Query{} = q, _state) when is_list(result) do
+    rows = Enum.map(result, &Tuple.to_list(&1))
+    num_rows = Enum.count(rows)
+    {:ok, %Sqlite.Result{rows: rows, num_rows: num_rows, columns: q.column_names}}
+  end
 end

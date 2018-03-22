@@ -9,7 +9,7 @@ defmodule Sqlite.Result do
 
   @type t :: %Sqlite.Result{
           columns: [String.t()],
-          rows: [[term] | binary],
+          rows: [[term]],
           num_rows: integer
         }
 end

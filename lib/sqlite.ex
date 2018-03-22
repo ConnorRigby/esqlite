@@ -3,8 +3,6 @@ defmodule Sqlite do
   SQLite3 driver for Elixir.
   """
 
-  alias Sqlite.Query
-
   defmodule Connection do
     @moduledoc false
     defstruct [
@@ -73,19 +71,16 @@ defmodule Sqlite do
       Sqlite.query(conn, "INSERT INTO posts (title) VALUES ('my title')", [])
       Sqlite.query(conn, "SELECT title FROM posts", [])
       Sqlite.query(conn, "SELECT id FROM posts WHERE title like $1", ["%my%"])
-      Sqlite.query(conn, "COPY posts TO STDOUT", [])
   """
   @spec query(conn, iodata, list, Keyword.t()) ::
           {:ok, Sqlite.Result.t()} | {:error, Sqlite.Error.t()}
-  def query(conn, statement, params, opts \\ []) do
-    query = %Query{name: "", statement: statement}
+  def query(conn, sql, params, opts \\ []) do
     opts = opts |> defaults()
 
-    GenServer.call(conn.pid, {:query, query, params, opts}, call_timeout(opts))
+    GenServer.call(conn.pid, {:query, sql, params, opts}, call_timeout(opts))
     |> case do
       {:ok, %Sqlite.Result{}} = ok -> ok
       {:error, %Sqlite.Error{}} = ok -> ok
-      err -> unexpected_response(err, :query)
     end
   end
 
@@ -94,10 +89,10 @@ defmodule Sqlite do
   there was an error. See `query/3`.
   """
   @spec query!(conn, iodata, list, Keyword.t()) :: Sqlite.Result.t()
-  def query!(conn, statement, params, opts \\ []) do
-    case query(conn, statement, params, opts) do
+  def query!(conn, sql, params, opts \\ []) do
+    case query(conn, sql, params, opts) do
       {:ok, result} -> result
-      {:error, reason} -> raise Sqlite.Error, %{reason: reason}
+      {:error, reason} -> raise Sqlite.Error, reason.message
     end
   end
 
@@ -105,35 +100,67 @@ defmodule Sqlite do
   Prepares an (extended) query and returns the result as
   `{:ok, %Sqlite.Query{}}` or `{:error, %Sqlite.Error{}}` if there was an
   error. Parameters can be set in the query as `$1` embedded in the query
-  string. To execute the query call `execute/4`. To close the prepared query
-  call `close/3`. See `Sqlite.Query` for the query data.
+  string. To execute the query call `execute/4`.
 
   ## Examples
-      Sqlite.prepare(conn, "", "CREATE TABLE posts (id serial, title text)")
+      Sqlite.prepare(conn, "CREATE TABLE posts (id serial, title text)")
   """
-  @spec prepare(conn, iodata, iodata, Keyword.t()) ::
-          {:ok, Sqlite.Query.t()} | {:error, Sqlite.Error.t()}
-  def prepare(conn, name, statement, opts \\ []) do
-    query = %Query{name: name, statement: statement}
+  @spec prepare(conn, iodata, Keyword.t()) :: {:ok, Sqlite.Query.t()} | {:error, Sqlite.Error.t()}
+  def prepare(conn, sql, opts \\ []) do
     opts = opts |> defaults()
 
-    GenServer.call(conn.pid, {:prepare, query, opts}, call_timeout(opts))
+    GenServer.call(conn.pid, {:prepare, sql, opts}, call_timeout(opts))
     |> case do
       {:ok, %Sqlite.Query{}} = ok -> ok
       {:error, %Sqlite.Error{}} = ok -> ok
-      err -> unexpected_response(err, :prepare)
     end
   end
 
   @doc """
   Prepares an (extended) query and returns the prepared query or raises
-  `Sqlite.Error` if there was an error. See `prepare/4`.
+  `Sqlite.Error` if there was an error. See `prepare/3`.
   """
-  @spec prepare!(conn, iodata, iodata, Keyword.t()) :: Sqlite.Query.t()
-  def prepare!(conn, name, statement, opts \\ []) do
-    case prepare(conn, name, statement, opts) do
+  @spec prepare!(conn, iodata, Keyword.t()) :: Sqlite.Query.t()
+  def prepare!(conn, sql, opts \\ []) do
+    case prepare(conn, sql, opts) do
       {:ok, result} -> result
-      {:error, reason} -> raise Sqlite.Error, %{reason: reason}
+      {:error, reason} -> raise Sqlite.Error, reason.message
+    end
+  end
+
+  @doc """
+  Releases an (extended) query.
+
+  ## Examples
+      query = Sqlite.prepare!(conn, "CREATE TABLE posts (id serial, title text)")
+      Sqlite.release_query(query)
+  """
+  @spec release_query(conn, Sqlite.Query.t(), Keyword.t()) :: :ok | {:error, Sqlite.Error.t()}
+  def release_query(conn, query, opts \\ []) do
+    opts = opts |> defaults()
+
+    GenServer.call(conn.pid, {:release_query, query, opts}, call_timeout(opts))
+    |> case do
+      :ok -> :ok
+      {:error, %Sqlite.Error{}} = ok -> ok
+    end
+  end
+
+  @doc """
+  Releases an (extended) query or raises
+  `Sqlite.Error` if there was an error. See `release_query/3`.
+
+  ## Examples
+      query = Sqlite.prepare!(conn, "CREATE TABLE posts (id serial, title text)")
+      Sqlite.release_query(query)
+  """
+  @spec release_query!(conn, Sqlite.Query.t(), Keyword.t()) :: :ok
+  def release_query!(conn, query, opts \\ []) do
+    opts = opts |> defaults()
+
+    case release_query(conn, query, opts) do
+      :ok -> :ok
+      {:error, reason} -> raise Sqlite.Error, reason.message
     end
   end
 
@@ -160,7 +187,6 @@ defmodule Sqlite do
     |> case do
       {:ok, %Sqlite.Result{}} = ok -> ok
       {:error, %Sqlite.Error{}} = ok -> ok
-      err -> unexpected_response(err, :execute)
     end
   end
 
@@ -172,7 +198,7 @@ defmodule Sqlite do
   def execute!(conn, query, params, opts \\ []) do
     case execute(conn, query, params, opts) do
       {:ok, result} -> result
-      {:error, reason} -> raise Sqlite.Error, %{reason: reason}
+      {:error, reason} -> raise Sqlite.Error, reason.message
     end
   end
 
@@ -182,23 +208,11 @@ defmodule Sqlite do
   @spec close(conn, Keyword.t()) :: :ok | {:error, Sqlite.Error.t()}
   def close(conn, opts \\ []) when is_list(opts) do
     opts = defaults(opts)
+
     GenServer.call(conn.pid, {:close, opts}, call_timeout(opts))
     |> case do
       :ok -> :ok
       {:error, %Sqlite.Error{}} = ok -> ok
-      err -> unexpected_response(err, :close)
-    end
-  end
-
-  @doc """
-  Closes an (extended) prepared query and returns `:ok` or raises
-  `Sqlite.Error` if there was an error. See `close/3`.
-  """
-  @spec close!(conn, Keyword.t()) :: :ok
-  def close!(conn, opts \\ []) do
-    case close(conn, opts) do
-      :ok -> :ok
-      {:error, reason} -> raise Sqlite.Error, %{reason: reason}
     end
   end
 
@@ -217,9 +231,5 @@ defmodule Sqlite do
     ]
 
     Keyword.merge(defaults, opts)
-  end
-
-  defp unexpected_response(err, fun) do
-    raise "Unexpected response to #{fun}: #{inspect(err)}"
   end
 end
