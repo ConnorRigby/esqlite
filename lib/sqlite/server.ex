@@ -17,8 +17,9 @@ defmodule Sqlite.Server do
   def init(opts) do
     filename = Keyword.fetch!(opts, :database)
     timeout = Keyword.fetch!(opts, :timeout)
+    flags = Keyword.fetch!(opts, :flags)
 
-    case Esqlite3.open(filename, timeout) do
+    case Esqlite3.open(filename, List.to_tuple(flags), timeout) do
       {:ok, db} ->
         {:ok, struct(State, database: db, filename: filename)}
 

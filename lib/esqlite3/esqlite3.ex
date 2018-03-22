@@ -21,16 +21,19 @@ defmodule Esqlite3 do
 
   @doc "Opens a sqlite3 database mentioned in filename."
   @spec open(filename) :: {:ok, connection} | error_tup2
-  def open(filename), do: open(filename, @default_timeout)
+  def open(filename), do: open(filename, {:readwrite, :create}, @default_timeout)
 
-  @doc "Opens a sqlite3 database mentioned in filename."
-  @spec open(filename, timeout) :: {:ok, connection} | error_tup2
-  def open(filename, timeout) do
+  @doc "Opens a sqlite3 database mentioned in filename with flags."
+  def open(filename, flags) when is_tuple(flags), do: open(filename, flags, @default_timeout)
+
+  @doc "Opens a sqlite3 database with a flags tuple and a timeout."
+  @spec open(filename, tuple, timeout) :: {:ok, connection} | error_tup2
+  def open(filename, flags, timeout) when is_tuple(flags) do
     filename = to_charlist(filename)
 
     with {:ok, connection} <- Esqlite3Nif.start(),
          ref when is_reference(ref) <- make_ref(),
-         :ok <- Esqlite3Nif.open(connection, ref, self(), filename),
+         :ok <- Esqlite3Nif.open(connection, ref, self(), filename, flags),
          :ok <- receive_answer(ref, timeout) do
       {:ok, {:connection, make_ref(), connection}}
     else

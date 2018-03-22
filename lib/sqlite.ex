@@ -30,7 +30,8 @@ defmodule Sqlite do
   @opaque conn :: Connection.t()
 
   @default_start_opts [
-    timeout: Application.get_env(:esqlite, :default_timeout, 5000)
+    timeout: Application.get_env(:esqlite, :default_timeout, 5000),
+    flags: [:readwrite, :create]
   ]
 
   @doc """
@@ -38,6 +39,20 @@ defmodule Sqlite do
   ## Options
     * `:database` -> Databse uri.
     * `:timeout` ->  Max amount of time for commands to take. (default: 5000)
+    * `:flags` -> List of flags to be passed to SQLite.
+  ## Flags
+  Flags to be passed to Sqlite on `open`.
+  See [here](https://www.sqlite.org/c3ref/c_open_autoproxy.html) for more
+  details.
+    * `:readwrite`
+    * `:readonly`
+    * `:create`
+    * `:uri`
+    * `:memory`
+    * `:nomutex`
+    * `:fullmutex`
+    * `:sharedcache`
+    * `:privatecache`
   ## GenServer opts
     These get passed directly to [GenServer](GenServer.html)
   ## Examples

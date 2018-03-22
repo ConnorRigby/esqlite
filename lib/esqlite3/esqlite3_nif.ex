@@ -27,8 +27,8 @@ defmodule Esqlite3Nif do
   def start, do: :erlang.nif_error(:nif_library_not_loaded)
 
   @doc "Open the specified sqlite3 database."
-  @spec open(connection, reference, pid, Path.t()) :: :ok | error_tup2
-  def open(_db, _ref, _dest, _filename), do: :erlang.nif_error(:nif_library_not_loaded)
+  @spec open(connection, reference, pid, Path.t(), tuple) :: :ok | error_tup2
+  def open(_db, _ref, _dest, _filename, _flags), do: :erlang.nif_error(:nif_library_not_loaded)
 
   @doc """
   Exec the query.

@@ -16,6 +16,13 @@ defmodule Esqlite3Test do
     assert match?({:ok, _c2}, Esqlite3.open("test2.db"))
   end
 
+  test "open with flags" do
+    {:ok, db} = Esqlite3.open(":memory:", {:readonly})
+
+    {:error, {:readonly, 'attempt to write a readonly database'}} =
+      Esqlite3.exec("create table test_table(one varchar(10), two int);", db)
+  end
+
   test "simple query" do
     {:ok, db} = Esqlite3.open(":memory:")
     :ok = Esqlite3.exec("begin;", db)

@@ -11,6 +11,9 @@ OBJ=$(SRC:.c=.o)
 
 LDFLAGS ?= -fPIC -shared -pedantic
 CFLAGS ?= -fPIC -O2
+SQLITE_CFLAGS = -DSQLITE_THREADSAFE=1 -DSQLITE_USE_URI -DSQLITE_ENABLE_FTS3 \
+-DSQLITE_ENABLE_FTS3_PARENTHESIS -DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_JSON1 \
+-DSQLITE_ENABLE_RTREE
 
 NIF=priv/esqlite3_nif.so
 
@@ -20,7 +23,7 @@ priv:
 	mkdir -p priv
 
 %.o: %.c
-	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) -o $@ $<
+	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) $(SQLITE_CFLAGS) -o $@ $<
 
 $(NIF): $(OBJ)
 	$(CC) $^ $(ERL_LDFLAGS) $(LDFLAGS) -o $@
