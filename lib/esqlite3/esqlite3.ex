@@ -219,6 +219,9 @@ defmodule Esqlite3 do
     end
   end
 
+  @doc """
+  Enumerate results with a function `f`.
+  """
   def map(f, sql, connection) do
     case prepare(sql, connection) do
       {:ok, statement} -> map_s(f, statement)
@@ -226,7 +229,7 @@ defmodule Esqlite3 do
     end
   end
 
-  def map_s(f, statement) when is_function(f, 1) do
+  defp map_s(f, statement) when is_function(f, 1) do
     case try_step(statement, 0) do
       :"$done" -> []
       {:error, _} = e -> f.(e)
@@ -234,7 +237,7 @@ defmodule Esqlite3 do
     end
   end
 
-  def map_s(f, statement) when is_function(f, 2) do
+  defp map_s(f, statement) when is_function(f, 2) do
     column_names = column_names(statement)
 
     case try_step(statement, 0) do
@@ -251,7 +254,7 @@ defmodule Esqlite3 do
     end
   end
 
-  def foreach_s(f, statement) when is_function(f, 1) do
+  defp foreach_s(f, statement) when is_function(f, 1) do
     case try_step(statement, 0) do
       :"$done" ->
         :ok
@@ -265,7 +268,7 @@ defmodule Esqlite3 do
     end
   end
 
-  def foreach_s(f, statement) when is_function(f, 2) do
+  defp foreach_s(f, statement) when is_function(f, 2) do
     column_names = column_names(statement)
 
     case try_step(statement, 0) do
@@ -305,11 +308,11 @@ defmodule Esqlite3 do
     end
   end
 
-  def try_step(statement, tries)
+  defp try_step(statement, tries)
 
-  def try_step(_statement, tries) when tries > 5, do: throw(:too_many_tries)
+  defp try_step(_statement, tries) when tries > 5, do: throw(:too_many_tries)
 
-  def try_step(statement, tries) do
+  defp try_step(statement, tries) do
     case step(statement) do
       :"$busy" ->
         :timer.sleep(100 * tries)
