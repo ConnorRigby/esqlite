@@ -29,14 +29,21 @@ defmodule Sqlite do
   @typedoc "Connection identifier for your Sqlite instance."
   @opaque conn :: Connection.t()
 
+  @default_start_opts [
+    timeout: Application.get_env(:esqlite, :default_timeout, 5000)
+  ]
+
   @doc """
   Start the connection process and connect to sqlite.
   ## Options
     * `:database` -> Databse uri.
+    * `:timeout` ->  Max amount of time for commands to take. (default: 5000)
+  ## GenServer opts
+    These get passed directly to [GenServer](GenServer.html)
   ## Examples
       iex> {:ok, pid} = Sqlite.open(database: "sqlite.db")
       {:ok, #PID<0.69.0>}
-      iex> {:ok, pid} = Sqlite.open(database: ":memory:")
+      iex> {:ok, pid} = Sqlite.open(database: ":memory:", timeout: 6000)
       {:ok, #PID<0.69.0>}
   """
   @spec open(Keyword.t(), GenServer.options()) :: {:ok, conn} | {:error, term}
@@ -77,8 +84,8 @@ defmodule Sqlite do
           {:ok, Sqlite.Result.t()} | {:error, Sqlite.Error.t()}
   def query(conn, sql, params, opts \\ []) do
     opts = opts |> defaults()
-
-    r = GenServer.call(conn.pid, {:query, sql, params, opts}, call_timeout(opts))
+    call = {:query, sql, params, opts}
+    r = GenServer.call(conn.pid, call, call_timeout(opts))
 
     case r do
       {:ok, %Sqlite.Result{}} = ok -> ok
@@ -110,8 +117,8 @@ defmodule Sqlite do
   @spec prepare(conn, iodata, Keyword.t()) :: {:ok, Sqlite.Query.t()} | {:error, Sqlite.Error.t()}
   def prepare(conn, sql, opts \\ []) do
     opts = opts |> defaults()
-
-    r = GenServer.call(conn.pid, {:prepare, sql, opts}, call_timeout(opts))
+    call = {:prepare, sql, opts}
+    r = GenServer.call(conn.pid, call, call_timeout(opts))
 
     case r do
       {:ok, %Sqlite.Query{}} = ok -> ok
@@ -141,8 +148,8 @@ defmodule Sqlite do
   @spec release_query(conn, Sqlite.Query.t(), Keyword.t()) :: :ok | {:error, Sqlite.Error.t()}
   def release_query(conn, query, opts \\ []) do
     opts = opts |> defaults()
-
-    r = GenServer.call(conn.pid, {:release_query, query, opts}, call_timeout(opts))
+    call = {:release_query, query, opts}
+    r = GenServer.call(conn.pid, call, call_timeout(opts))
 
     case r do
       :ok -> :ok
@@ -186,8 +193,8 @@ defmodule Sqlite do
           {:ok, Sqlite.Result.t()} | {:error, Sqlite.Error.t()}
   def execute(conn, query, params, opts \\ []) do
     opts = defaults(opts)
-
-    r = GenServer.call(conn.pid, {:execute, query, params, opts}, call_timeout(opts))
+    call = {:execute, query, params, opts}
+    r = GenServer.call(conn.pid, call, call_timeout(opts))
 
     case r do
       {:ok, %Sqlite.Result{}} = ok -> ok
@@ -239,8 +246,9 @@ defmodule Sqlite do
     Keyword.merge(defaults, opts)
   end
 
+  @doc false
   @spec default_opts(Keyword.t()) :: Keyword.t()
-  def default_opts(opts) do
-    Keyword.merge([timeout: Application.get_env(:esqlite, :default_timeout, 5000)], opts)
+  defp default_opts(opts) do
+    Keyword.merge(@default_start_opts, opts)
   end
 end

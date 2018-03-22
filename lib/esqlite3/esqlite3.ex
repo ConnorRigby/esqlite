@@ -327,7 +327,8 @@ defmodule Esqlite3 do
     end
   end
 
-  defp receive_answer(ref, timeout) when is_reference(ref) and is_integer(timeout) do
+  defp receive_answer(ref, timeout)
+       when is_reference(ref) and (is_integer(timeout) or timeout == :infinity) do
     start = :os.timestamp()
 
     receive do

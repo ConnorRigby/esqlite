@@ -13,6 +13,7 @@ defmodule Esqlite.MixProject do
       plt_add_apps: [],
       dialyzer: [flags: [:unmatched_returns, :race_conditions, :no_unused]],
       erlc_paths: erlc_paths(Mix.env()),
+      test_paths: ["test", "bench", "erl_test"],
       start_permanent: Mix.env() == :prod,
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
