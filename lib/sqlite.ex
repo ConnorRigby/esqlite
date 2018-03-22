@@ -19,6 +19,7 @@ defmodule Sqlite do
           }
 
     defimpl Inspect, for: __MODULE__ do
+      @doc false
       def inspect(%{ref: ref}, _opts) when is_reference(ref) do
         String.replace(inspect(ref), "Reference", "Sqlite3")
       end

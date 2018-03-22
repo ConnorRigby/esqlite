@@ -17,6 +17,7 @@ defmodule Sqlite.Query do
         }
 
   defimpl Inspect, for: __MODULE__ do
+    @doc false
     def inspect(%{statement: {:statement, ref, _}}, _) when is_reference(ref) do
       String.replace(inspect(ref), "Reference", "Statement")
     end
