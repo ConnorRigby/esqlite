@@ -31,14 +31,24 @@ the command has been added to the command-queue of the thread.
 Since this project was originally an Erlang package, I chose to maintain the
 original module name (as an alias) and it's tests to try to maintain
 backwards compatibility. By default these tests get ran by default.
-`mix test` will execute them.
+
+```bash
+# All the tests without the bench marks.
+mix test
+
+# Run only erlang tests.
+mix test --only esqlite_erlang
+```
 
 # Benchmarks
 There is also a benchmark suite located in the `bench` directory.
 It does not get ran with the test suite since it can take quite a while.
-You can run the benchmarks with
+
 ```bash
+# run all the tests and the benchmarks.
 mix test --include bench
+# run just the benchmark with
+mix test bench --include bench
 ```
 
 # Thanks and License
