@@ -19,11 +19,11 @@ defmodule Esqlite3 do
   @typedoc "SQL binary or charlist."
   @type sql :: iodata
 
-  @doc "Opens a sqlite3 database mentioned in Filename."
+  @doc "Opens a sqlite3 database mentioned in filename."
   @spec open(filename) :: {:ok, connection} | error_tup2
   def open(filename), do: open(filename, @default_timeout)
 
-  @doc "Opens a sqlite3 database mentioned in Filename."
+  @doc "Opens a sqlite3 database mentioned in filename."
   @spec open(filename, timeout) :: {:ok, connection} | error_tup2
   def open(filename, timeout) do
     filename = to_charlist(filename)
@@ -38,11 +38,11 @@ defmodule Esqlite3 do
     end
   end
 
-  @doc "Execute Sql statement, returns the number of affected rows."
+  @doc "Execute sql statement, returns the number of affected rows."
   @spec exec(sql, connection) :: :ok | error_tup2
   def exec(sql, connection), do: exec(sql, connection, @default_timeout)
 
-  @doc "Execute Sql statement, returns the number of affected rows."
+  @doc "Execute sql statement, returns the number of affected rows."
   @spec exec(sql, connection, timeout) :: :ok | error_tup2
   def exec(sql, connection, timeout)
 
@@ -184,11 +184,11 @@ defmodule Esqlite3 do
     receive_answer(ref, timeout)
   end
 
-  @doc "Close the database"
+  @doc "Close the database connection."
   @spec close(connection) :: :ok | error_tup2
   def close(connection), do: close(connection, @default_timeout)
 
-  @doc "Close the database"
+  @doc "Close the database connection."
   @spec close(connection, timeout) :: :ok | error_tup2
   def close(connection, timeout)
 
@@ -220,7 +220,9 @@ defmodule Esqlite3 do
     end
   end
 
-  @doc "Enumerate results with a function `f`."
+  @doc """
+  Enumerate `sql` applying `f` to each result.
+  """
   def map(f, sql, connection) do
     case prepare(sql, connection) do
       {:ok, statement} -> map_s(f, statement)
