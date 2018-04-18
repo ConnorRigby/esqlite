@@ -88,6 +88,10 @@ defmodule Esqlite3Nif do
   def enable_load_extension(_db, _ref, _dest), do: :erlang.nif_error(:nif_library_not_loaded)
 
   @on_load :load_nif
+  # Don't load the file automatically during compile
+  # If we are cross compiled this will cause an error
+  @compile {:autoload, false}
+
   @doc false
   def load_nif do
     require Logger
