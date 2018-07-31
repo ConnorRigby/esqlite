@@ -1,7 +1,7 @@
-[![CircleCI](https://circleci.com/gh/ConnorRigby/esqlite.svg?style=svg)](https://circleci.com/gh/ConnorRigby/esqlite)
-[![Coverage Status](https://coveralls.io/repos/github/ConnorRigby/esqlite/badge.svg?branch=master)](https://coveralls.io/github/ConnorRigby/esqlite?branch=master)
+[![CircleCI](https://circleci.com/gh/Sqlite-Ecto/esqlite.svg?style=svg)](https://circleci.com/gh/Sqlite-Ecto/esqlite)
+[![Coverage Status](https://coveralls.io/repos/github/Sqlite-Ecto/esqlite/badge.svg?branch=master)](https://coveralls.io/github/Sqlite-Ecto/esqlite?branch=master)
 [![Inline docs](http://inch-ci.org/github/connorrigby/esqlite.svg?branch=master)](http://inch-ci.org/github/connorrigby/esqlite)
-[![Deps Status](https://beta.hexfaktor.org/badge/all/github/ConnorRigby/esqlite.svg)](https://beta.hexfaktor.org/github/ConnorRigby/esqlite)
+[![Deps Status](https://beta.hexfaktor.org/badge/all/github/Sqlite-Ecto/esqlite.svg)](https://beta.hexfaktor.org/github/Sqlite-Ecto/esqlite)
 
 # Sqlite
 Elixir API for interacting with SQLite databases.
@@ -47,8 +47,6 @@ It does not get ran with the test suite since it can take quite a while.
 ```bash
 # run all the tests and the benchmarks.
 mix test --include bench
-# run just the benchmark with
-mix test bench --include bench
 ```
 
 # Thanks and License

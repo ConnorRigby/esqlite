@@ -52,7 +52,7 @@ defmodule Esqlite3Nif do
   @spec prepare(connection, reference, pid, sql) :: :ok | error_tup2
   def prepare(_db, _ref, _dest, _sql), do: :erlang.nif_error(:nif_library_not_loaded)
 
-  @spec multi_step(connection, statement, pos_integer, reference, pid) :: {:ok, [tuple]} | error_tup2
+  @spec multi_step(connection, statement, pos_integer, reference, pid) :: :ok | error_tup2
   def multi_step(_db, _stmt, _chunk_size, _ref, _dest), do: :erlang.nif_error(:nif_library_not_loaded)
 
   @doc "Reset a prepared statement."
@@ -94,15 +94,11 @@ defmodule Esqlite3Nif do
 
   @doc false
   def load_nif do
-    require Logger
-    nif_file = Path.join([:code.priv_dir(:esqlite), 'esqlite3_nif']) |> to_charlist()
-
-    case :erlang.load_nif(nif_file, 0) do
+    nif_file = Path.join([:code.priv_dir(:esqlite), 'esqlite3_nif'])
+    case :erlang.load_nif(to_charlist(nif_file), 0) do
       :ok -> :ok
       {:error, {:reload, _}} -> :ok
-      {:error, reason} ->
-        Logger.error "Failed to load nif: #{inspect reason}"
-        {:error, reason}
+      {:error, reason} -> {:error, reason}
     end
   end
 end
