@@ -2,6 +2,7 @@
  "skip_files": [
   "lib/esqlite3/esqlite3_nif.ex",
   "lib/esqlite3/esqlite_erlang_def.ex",
-  "erl_test/"
+  "erl_test/",
+  "bench"
  ]
 }

@@ -53,12 +53,11 @@ defmodule Esqlite.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elixir_make, "~> 0.4.1", runtime: false},
-      {:dialyxir, "~> 0.5.1", runtime: false, only: :dev},
-      {:excoveralls, "~> 0.8", only: :test, optional: true},
-      {:ex_doc, "~> 0.18.3", runtime: false, only: :docs},
-      {:inch_ex, only: :docs, runtime: false},
-      {:credo, "~> 0.9.0-rc1", only: [:dev, :test], runtime: false}
+      {:elixir_make, "~> 0.4.2", runtime: false},
+      {:dialyxir, "~> 1.0.0-rc.3", runtime: false, only: :dev},
+      {:excoveralls, "~> 0.9", only: :test, optional: true},
+      {:ex_doc, "~> 0.18.0", only: :dev, runtime: false},
+      {:credo, "~> 0.10", only: [:dev, :test], runtime: false}
     ]
   end
 end
