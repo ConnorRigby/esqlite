@@ -1,7 +1,6 @@
 [![CircleCI](https://circleci.com/gh/Sqlite-Ecto/esqlite.svg?style=svg)](https://circleci.com/gh/Sqlite-Ecto/esqlite)
 [![Coverage Status](https://coveralls.io/repos/github/Sqlite-Ecto/esqlite/badge.svg?branch=master)](https://coveralls.io/github/Sqlite-Ecto/esqlite?branch=master)
 [![Inline docs](http://inch-ci.org/github/connorrigby/esqlite.svg?branch=master)](http://inch-ci.org/github/connorrigby/esqlite)
-[![Deps Status](https://beta.hexfaktor.org/badge/all/github/Sqlite-Ecto/esqlite.svg)](https://beta.hexfaktor.org/github/Sqlite-Ecto/esqlite)
 
 # Sqlite
 Elixir API for interacting with SQLite databases.
