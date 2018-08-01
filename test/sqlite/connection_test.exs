@@ -97,7 +97,7 @@ defmodule Sqlite.Connection.Test do
     test "inspect prepared query.", %{conn: conn} do
       query = Connection.prepare!(conn, "CREATE TABLE loop (id)")
       assert inspect(query) =~ "#Statement<"
-      empty = %Sqlite.Query{}
+      empty = %Query{}
       catch_exit(inspect(empty))
     end
 
