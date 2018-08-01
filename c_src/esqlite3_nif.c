@@ -1263,4 +1263,4 @@ static ErlNifFunc nif_funcs[] = {
     {"enable_load_extension", 3, esqlite_enable_load_extension}
 };
 
-ERL_NIF_INIT(Elixir.Esqlite3Nif, nif_funcs, on_load, on_reload, on_upgrade, NULL);
+ERL_NIF_INIT(Elixir.Sqlite3Nif, nif_funcs, on_load, on_reload, on_upgrade, NULL);

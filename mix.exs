@@ -1,9 +1,9 @@
-defmodule Esqlite.MixProject do
+defmodule Sqlite.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :esqlite,
+      app: :sqlite,
       version: "0.2.3",
       elixir: "~> 1.6",
       compilers: [:elixir_make] ++ Mix.compilers(),
@@ -13,7 +13,7 @@ defmodule Esqlite.MixProject do
       plt_add_apps: [],
       dialyzer: [flags: [:unmatched_returns, :race_conditions, :no_unused]],
       erlc_paths: erlc_paths(Mix.env()),
-      test_paths: ["test", "bench", "erl_test"],
+      test_paths: ["test", "bench"],
       start_permanent: Mix.env() == :prod,
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [

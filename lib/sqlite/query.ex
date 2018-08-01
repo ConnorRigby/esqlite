@@ -10,7 +10,7 @@ defmodule Sqlite.Query do
 
   @typedoc "Sqlite Query for execution."
   @type t :: %__MODULE__{
-          statement: Esqlite3.prepared_statement(),
+          statement: Sqlite.prepared_statement(),
           sql: iodata,
           column_names: [iodata] | nil,
           column_types: [atom] | nil

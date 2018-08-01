@@ -8,8 +8,8 @@ defmodule Sqlite.Server do
     defstruct [:database, :filename]
     @typedoc false
     @type t :: %__MODULE__{
-            database: Esqlite3.connection() | :closed,
-            filename: Esqlite3.filename()
+            database: Sqlite.connection() | :closed,
+            filename: Sqlite.filename()
           }
   end
 
@@ -19,7 +19,7 @@ defmodule Sqlite.Server do
     timeout = Keyword.fetch!(opts, :timeout)
     flags = Keyword.fetch!(opts, :flags)
 
-    case Esqlite3.open(filename, List.to_tuple(flags), timeout) do
+    case Sqlite.open(filename, List.to_tuple(flags), timeout) do
       {:ok, db} ->
         {:ok, struct(State, database: db, filename: filename)}
 
@@ -31,7 +31,7 @@ defmodule Sqlite.Server do
   @impl GenServer
   def terminate(_, state) do
     unless state.database == :closed do
-      :ok = Esqlite3.close(state.database)
+      :ok = Sqlite.close(state.database)
     end
 
     :ok
@@ -40,8 +40,8 @@ defmodule Sqlite.Server do
   @impl GenServer
   def handle_call({:query, sql, params, opts}, _from, state) do
     with {:ok, %Query{} = q} <- build_query(sql, opts, state.database),
-         :ok <- Esqlite3.bind(q.statement, params) do
-      r = q.statement |> Esqlite3.fetchall() |> build_result(q, state)
+         :ok <- Sqlite.bind(q.statement, params) do
+      r = q.statement |> Sqlite.fetchall() |> build_result(q, state)
       {:reply, r, state}
     else
       err -> {:reply, error(err, state), state}
@@ -49,7 +49,7 @@ defmodule Sqlite.Server do
   end
 
   def handle_call({:release_query, query, opts}, _from, state) do
-    case Esqlite3.reset(query.statement, opts[:timeout]) do
+    case Sqlite.reset(query.statement, opts[:timeout]) do
       :ok -> {:reply, :ok, state}
       err -> {:reply, error(err, state), state}
     end
@@ -66,9 +66,9 @@ defmodule Sqlite.Server do
   end
 
   def handle_call({:execute, query, params, opts}, _from, state) do
-    case Esqlite3.bind(query.statement, params, opts[:timeout]) do
+    case Sqlite.bind(query.statement, params, opts[:timeout]) do
       :ok ->
-        r = query.statement |> Esqlite3.fetchall() |> build_result(query, state)
+        r = query.statement |> Sqlite.fetchall() |> build_result(query, state)
         {:reply, r, state}
 
       err ->
@@ -77,7 +77,7 @@ defmodule Sqlite.Server do
   end
 
   def handle_call({:close, opts}, _from, state) do
-    case Esqlite3.close(state.database, opts[:timeout]) do
+    case Sqlite.close(state.database, opts[:timeout]) do
       :ok -> {:stop, :normal, :ok, %{state | database: :closed}}
       {:error, reason} -> {:stop, reason, error(reason, state), state}
     end
@@ -96,15 +96,15 @@ defmodule Sqlite.Server do
 
   defp error(reason, _state), do: {:error, %Sqlite.Error{message: reason}}
 
-  @spec build_query(iodata, Keyword.t(), Esqlite3.connection()) ::
+  @spec build_query(iodata, Keyword.t(), Sqlite.connection()) ::
           {:ok, Sqlite.Query.t()} | {:error, term}
   defp build_query(sql, opts, database) do
     timeout = opts[:timeout]
 
-    case Esqlite3.prepare(sql, database, timeout) do
+    case Sqlite.prepare(sql, database, timeout) do
       {:ok, statement} ->
-        cn = statement |> Esqlite3.column_names(timeout) |> Tuple.to_list()
-        ct = statement |> Esqlite3.column_types(timeout) |> Tuple.to_list()
+        cn = statement |> Sqlite.column_names(timeout) |> Tuple.to_list()
+        ct = statement |> Sqlite.column_types(timeout) |> Tuple.to_list()
         {:ok, %Sqlite.Query{column_names: cn, column_types: ct, statement: statement, sql: sql}}
 
       err ->

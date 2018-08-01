@@ -1,269 +1,382 @@
 defmodule Sqlite do
   @moduledoc """
-  SQLite3 driver for Elixir.
+  Use a Sqlite3 database in Elixir _and_ Erlang!
   """
+  require Logger
+  @default_timeout Application.get_env(:esqlite, :default_timeout, 5000)
 
-  defmodule Connection do
-    @moduledoc false
-    defstruct [
-      :pid,
-      :ref,
-      :database
-    ]
+  @typep error_tup2 :: {:error, term}
 
-    @typedoc false
-    @type t :: %__MODULE__{
-            pid: GenServer.server(),
-            ref: reference,
-            database: Esqlite3.filename()
-          }
+  @typedoc "Connection record."
+  @type connection :: {:connection, reference, Sqlite3Nif.connection()}
 
-    defimpl Inspect, for: __MODULE__ do
-      @doc false
-      def inspect(%{ref: ref}, _opts) when is_reference(ref) do
-        String.replace(inspect(ref), "Reference", "Sqlite3")
-      end
+  @typedoc "Statement record."
+  @type prepared_statement :: {:statement, Sqlite3Nif.statement(), connection}
+
+  @typedoc "File to open."
+  @type filename :: Path.t() | iodata
+
+  @typedoc "SQL binary or charlist."
+  @type sql :: iodata
+
+  @doc "Opens a sqlite3 database mentioned in filename."
+  @spec open(filename) :: {:ok, connection} | error_tup2
+  def open(filename), do: open(filename, {:readwrite, :create}, @default_timeout)
+
+  @doc "Opens a sqlite3 database mentioned in filename with flags."
+  def open(filename, flags) when is_tuple(flags), do: open(filename, flags, @default_timeout)
+
+  @doc "Opens a sqlite3 database with a flags tuple and a timeout."
+  @spec open(filename, tuple, timeout) :: {:ok, connection} | error_tup2
+  def open(filename, flags, timeout) when is_tuple(flags) do
+    filename = to_charlist(filename)
+
+    with {:ok, connection} <- Sqlite3Nif.start(),
+         ref when is_reference(ref) <- make_ref(),
+         :ok <- Sqlite3Nif.open(connection, ref, self(), filename, flags),
+         :ok <- receive_answer(ref, timeout) do
+      {:ok, {:connection, make_ref(), connection}}
+    else
+      {:error, _} = err -> err
     end
   end
 
-  @typedoc "Connection identifier for your Sqlite instance."
-  @opaque conn :: Connection.t()
+  @doc "Execute sql statement, returns the number of affected rows."
+  @spec exec(sql, connection) :: :ok | error_tup2
+  def exec(sql, connection), do: exec(sql, connection, @default_timeout)
 
-  @default_start_opts [
-    timeout: Application.get_env(:esqlite, :default_timeout, 5000),
-    flags: [:readwrite, :create]
-  ]
+  @doc "Execute sql statement, returns the number of affected rows."
+  @spec exec(sql, connection, timeout) :: :ok | error_tup2
+  def exec(sql, connection, timeout)
 
-  @doc """
-  Start the connection process and connect to sqlite.
-  ## Options
-    * `:database` -> Databse uri.
-    * `:timeout` ->  Max amount of time for commands to take. (default: 5000)
-    * `:flags` -> List of flags to be passed to SQLite.
-  ## Flags
-  Flags to be passed to Sqlite on `open`.
-  See [here](https://www.sqlite.org/c3ref/c_open_autoproxy.html) for more
-  details.
-    * `:readwrite`
-    * `:readonly`
-    * `:create`
-    * `:uri`
-    * `:memory`
-    * `:nomutex`
-    * `:fullmutex`
-    * `:sharedcache`
-    * `:privatecache`
-  ## GenServer opts
-    These get passed directly to [GenServer](GenServer.html)
-  ## Examples
-      iex> {:ok, pid} = Sqlite.open(database: "sqlite.db")
-      {:ok, #PID<0.69.0>}
-      iex> {:ok, pid} = Sqlite.open(database: ":memory:", timeout: 6000)
-      {:ok, #PID<0.69.0>}
-  """
-  @spec open(Keyword.t(), GenServer.options()) :: {:ok, conn} | {:error, term}
-  def open(opts, gen_server_opts \\ []) when is_list(opts) do
-    opts = default_opts(opts)
+  def exec(sql, {:connection, _ref, connection}, timeout) do
+    ref = make_ref()
+    :ok = Sqlite3Nif.exec(connection, ref, self(), sql)
+    receive_answer(ref, timeout)
+  end
 
-    case GenServer.start_link(Sqlite.Server, opts, gen_server_opts) do
-      {:ok, pid} ->
-        conn =
-          struct(
-            Connection,
-            pid: pid,
-            database: opts[:database],
-            ref: make_ref()
-          )
+  @doc "Execute SQL statement and bind params to it."
+  @spec exec(sql, Sqlite3Nif.bind_args(), connection) :: :ok | error_tup2
+  def exec(sql, params, connection), do: exec(sql, params, connection, @default_timeout)
 
-        {:ok, conn}
+  @doc "Execute SQL statement and bind params to it."
+  @spec exec(sql, Sqlite3Nif.bind_args(), connection, timeout) :: :ok | error_tup2
+  def exec(sql, params, connection, timeout) when is_list(params) do
+    {:ok, statement} = prepare(sql, connection, timeout)
+    :ok = bind(statement, params)
+    step(statement, timeout)
+  end
 
-      {:error, reason} ->
-        {:error, reason}
+  @doc "Return the number of affected rows of last statement."
+  @spec changes(connection) :: integer | error_tup2
+  def changes(connection), do: changes(connection, @default_timeout)
+
+  @doc "Return the number of affected rows of last statement."
+  @spec changes(connection, timeout) :: {:ok, integer} | error_tup2
+  def changes(connection, timeout)
+
+  def changes({:connection, _ref, connection}, timeout) do
+    ref = make_ref()
+    :ok = Sqlite3Nif.changes(connection, ref, self())
+    receive_answer(ref, timeout)
+  end
+
+  @doc "Insert records, returns the last rowid."
+  @spec insert(sql, connection) :: {:ok, integer} | error_tup2
+  def insert(sql, connection), do: insert(sql, connection, @default_timeout)
+
+  @doc "Insert records, returns the last rowid."
+  @spec insert(sql, connection, timeout) :: {:ok, integer} | error_tup2
+  def insert(sql, connection, timeout)
+
+  def insert(sql, {:connection, _ref, connection}, timeout) do
+    ref = make_ref()
+    :ok = Sqlite3Nif.insert(connection, ref, self(), sql)
+    receive_answer(ref, timeout)
+  end
+
+  @doc "Prepare a statement"
+  @spec prepare(sql, connection) :: {:ok, prepared_statement} | error_tup2
+  def prepare(sql, connection), do: prepare(sql, connection, @default_timeout)
+
+  @doc "Prepare a statement"
+  @spec prepare(sql, connection, timeout) :: {:ok, prepared_statement} | error_tup2
+  def prepare(sql, connection, timeout)
+
+  def prepare(sql, {:connection, _ref, connection} = c, timeout) do
+    ref = make_ref()
+    :ok = Sqlite3Nif.prepare(connection, ref, self(), sql)
+
+    case receive_answer(ref, timeout) do
+      {:ok, prepared_statement} -> {:ok, {:statement, prepared_statement, c}}
+      err -> err
     end
   end
 
-  @doc """
-  Runs an (extended) query and returns the result as `{:ok, %Sqlite.Result{}}`
-  or `{:error, %Sqlite.Error{}}` if there was a database error. Parameters can
-  be set in the query as `$1` embedded in the query string. Parameters are given
-  as a list of elixir values. See the README for information on how Sqlite
-  encodes and decodes Elixir values by default. See `Sqlite.Result` for the
-  result data.
-  ## Examples
-      Sqlite.query(conn, "CREATE TABLE posts (id serial, title text)", [])
-      Sqlite.query(conn, "INSERT INTO posts (title) VALUES ('my title')", [])
-      Sqlite.query(conn, "SELECT title FROM posts", [])
-      Sqlite.query(conn, "SELECT id FROM posts WHERE title like $1", ["%my%"])
-  """
-  @spec query(conn, iodata, list, Keyword.t()) ::
-          {:ok, Sqlite.Result.t()} | {:error, Sqlite.Error.t()}
-  def query(conn, sql, params, opts \\ []) do
-    opts = opts |> defaults()
-    call = {:query, sql, params, opts}
-    r = GenServer.call(conn.pid, call, call_timeout(opts))
+  @doc "Step into a prepared statement."
+  def step(prepared_statement), do: step(prepared_statement, @default_timeout)
 
-    case r do
-      {:ok, %Sqlite.Result{}} = ok -> ok
-      {:error, %Sqlite.Error{}} = ok -> ok
-    end
-  end
+  @doc "Step into a prepared statement."
+  @spec step(prepared_statement, timeout) :: :"$busy" | :"$done" | {:row, any} | error_tup2
+  def step(prepared_statement, timeout)
 
-  @doc """
-  Runs an (extended) query and returns the result or raises `Sqlite.Error` if
-  there was an error. See `query/3`.
-  """
-  @spec query!(conn, iodata, list, Keyword.t()) :: Sqlite.Result.t()
-  def query!(conn, sql, params, opts \\ []) do
-    case query(conn, sql, params, opts) do
-      {:ok, result} -> result
-      {:error, reason} -> raise Sqlite.Error, reason.message
-    end
-  end
-
-  @doc """
-  Prepares an (extended) query and returns the result as
-  `{:ok, %Sqlite.Query{}}` or `{:error, %Sqlite.Error{}}` if there was an
-  error. Parameters can be set in the query as `$1` embedded in the query
-  string. To execute the query call `execute/4`.
-
-  ## Examples
-      Sqlite.prepare(conn, "CREATE TABLE posts (id serial, title text)")
-  """
-  @spec prepare(conn, iodata, Keyword.t()) :: {:ok, Sqlite.Query.t()} | {:error, Sqlite.Error.t()}
-  def prepare(conn, sql, opts \\ []) do
-    opts = opts |> defaults()
-    call = {:prepare, sql, opts}
-    r = GenServer.call(conn.pid, call, call_timeout(opts))
-
-    case r do
-      {:ok, %Sqlite.Query{}} = ok -> ok
-      {:error, %Sqlite.Error{}} = ok -> ok
-    end
-  end
-
-  @doc """
-  Prepares an (extended) query and returns the prepared query or raises
-  `Sqlite.Error` if there was an error. See `prepare/3`.
-  """
-  @spec prepare!(conn, iodata, Keyword.t()) :: Sqlite.Query.t()
-  def prepare!(conn, sql, opts \\ []) do
-    case prepare(conn, sql, opts) do
-      {:ok, result} -> result
-      {:error, reason} -> raise Sqlite.Error, reason.message
-    end
-  end
-
-  @doc """
-  Releases an (extended) query.
-
-  ## Examples
-      query = Sqlite.prepare!(conn, "CREATE TABLE posts (id serial, title text)")
-      Sqlite.release_query(query)
-  """
-  @spec release_query(conn, Sqlite.Query.t(), Keyword.t()) :: :ok | {:error, Sqlite.Error.t()}
-  def release_query(conn, query, opts \\ []) do
-    opts = opts |> defaults()
-    call = {:release_query, query, opts}
-    r = GenServer.call(conn.pid, call, call_timeout(opts))
-
-    case r do
-      :ok -> :ok
-      {:error, %Sqlite.Error{}} = ok -> ok
-    end
-  end
-
-  @doc """
-  Releases an (extended) query or raises
-  `Sqlite.Error` if there was an error. See `release_query/3`.
-
-  ## Examples
-      query = Sqlite.prepare!(conn, "CREATE TABLE posts (id serial, title text)")
-      Sqlite.release_query(query)
-  """
-  @spec release_query!(conn, Sqlite.Query.t(), Keyword.t()) :: :ok
-  def release_query!(conn, query, opts \\ []) do
-    opts = opts |> defaults()
-
-    case release_query(conn, query, opts) do
-      :ok -> :ok
-      {:error, reason} -> raise Sqlite.Error, reason.message
-    end
-  end
-
-  @doc """
-  Runs an (extended) prepared query and returns the result as
-  `{:ok, %Sqlite.Result{}}` or `{:error, %Sqlite.Error{}}` if there was an
-  error. Parameters are given as part of the prepared query, `%Sqlite.Query{}`.
-  See the README for information on how Sqlite encodes and decodes Elixir
-  values by default. See `Sqlite.Query` for the query data and
-  `Sqlite.Result` for the result data.
-
-  ## Examples
-      query = Sqlite.prepare!(conn, "", "CREATE TABLE posts (id serial, title text)")
-      Sqlite.execute(conn, query, [])
-      query = Sqlite.prepare!(conn, "", "SELECT id FROM posts WHERE title like $1")
-      Sqlite.execute(conn, query, ["%my%"])
-  """
-  @spec execute(conn, Sqlite.Query.t(), list, Keyword.t()) ::
-          {:ok, Sqlite.Result.t()} | {:error, Sqlite.Error.t()}
-  def execute(conn, query, params, opts \\ []) do
-    opts = defaults(opts)
-    call = {:execute, query, params, opts}
-    r = GenServer.call(conn.pid, call, call_timeout(opts))
-
-    case r do
-      {:ok, %Sqlite.Result{}} = ok -> ok
-      {:error, %Sqlite.Error{}} = ok -> ok
-    end
-  end
-
-  @doc """
-  Runs an (extended) prepared query and returns the result or raises
-  `Sqlite.Error` if there was an error. See `execute/4`.
-  """
-  @spec execute!(conn, Sqlite.Query.t(), list, Keyword.t()) :: Sqlite.Result.t()
-  def execute!(conn, query, params, opts \\ []) do
-    case execute(conn, query, params, opts) do
-      {:ok, result} -> result
-      {:error, reason} -> raise Sqlite.Error, reason.message
-    end
-  end
-
-  @doc """
-  Closes the connection to the database.
-  """
-  @spec close(conn, Keyword.t()) :: :ok | {:error, Sqlite.Error.t()}
-  def close(conn, opts \\ []) when is_list(opts) do
-    opts = defaults(opts)
-
-    r = GenServer.call(conn.pid, {:close, opts}, call_timeout(opts))
-
-    case r do
-      :ok -> :ok
-      {:error, %Sqlite.Error{}} = ok -> ok
-    end
-  end
-
-  @spec call_timeout(Keyword.t()) :: timeout
-  defp call_timeout(opts) do
-    case Keyword.fetch!(opts, :timeout) do
-      number when is_integer(number) -> number + 100
+  def step({:statement, prepared_statement, {:connection, _ref, connection}}, timeout) do
+    ref = make_ref()
+    :ok = Sqlite3Nif.multi_step(connection, prepared_statement, 1, ref, self())
+    case receive_answer(ref, timeout) do
+      {:rows, [row | []]} -> {:row, row}
+      {:"$done", []} -> :"$done"
+      {:"$busy", []} -> :"$busy"
       other -> other
     end
   end
 
-  @spec defaults(Keyword.t()) :: Keyword.t()
-  defp defaults(opts) do
-    defaults = [
-      timeout: Application.get_env(:esqlite, :default_timeout, 5000)
-    ]
+  @doc "Reset the prepared statement back to its initial state."
+  @spec reset(prepared_statement) :: :ok | error_tup2
+  def reset(prepared_statement), do: reset(prepared_statement, @default_timeout)
 
-    Keyword.merge(defaults, opts)
+  @doc "Reset the prepared statement back to its initial state."
+  @spec reset(prepared_statement, timeout) :: :ok | error_tup2
+  def reset(prepared_statement, timeout)
+
+  def reset({:statement, prepared_statement, {:connection, _ref, connection}}, timeout) do
+    ref = make_ref()
+    :ok = Sqlite3Nif.reset(connection, prepared_statement, ref, self())
+    receive_answer(ref, timeout)
   end
 
-  @doc false
-  @spec default_opts(Keyword.t()) :: Keyword.t()
-  defp default_opts(opts) do
-    Keyword.merge(@default_start_opts, opts)
+  @doc "Bind values to prepared statements"
+  @spec bind(prepared_statement, Sqlite3Nif.bind_args()) :: :ok | error_tup2
+  def bind(prepared_statement, args), do: bind(prepared_statement, args, @default_timeout)
+
+  @doc "Bind values to prepared statements"
+  @spec bind(prepared_statement, Sqlite3Nif.bind_args(), timeout) :: :ok | error_tup2
+  def bind(prepared_statement, args, timeout)
+
+  def bind({:statement, prepared_statement, {:connection, _ref, connection}}, args, timeout) do
+    ref = make_ref()
+    :ok = Sqlite3Nif.bind(connection, prepared_statement, ref, self(), args)
+    receive_answer(ref, timeout)
   end
+
+  @doc "Return the column names of the prepared statement."
+  @spec column_names(prepared_statement) :: tuple | error_tup2
+  def column_names(prepared_statement), do: column_names(prepared_statement, @default_timeout)
+
+  @doc "Return the column names of the prepared statement."
+  @spec column_names(prepared_statement, timeout) :: tuple | error_tup2
+  def column_names(prepared_statement, timeout)
+
+  def column_names({:statement, prepared_statement, {:connection, _ref, connection}}, timeout) do
+    ref = make_ref()
+    :ok = Sqlite3Nif.column_names(connection, prepared_statement, ref, self())
+    receive_answer(ref, timeout)
+  end
+
+  @doc "Return the column types of the prepared statement."
+  @spec column_types(prepared_statement) :: tuple | error_tup2
+  def column_types(prepared_statement), do: column_types(prepared_statement, @default_timeout)
+
+  @doc "Return the column types of the prepared statement."
+  @spec column_types(prepared_statement, timeout) :: tuple | error_tup2
+  def column_types(prepared_statement, timeout)
+
+  def column_types({:statement, prepared_statement, {:connection, _ref, connection}}, timeout) do
+    ref = make_ref()
+    :ok = Sqlite3Nif.column_types(connection, prepared_statement, ref, self())
+    receive_answer(ref, timeout)
+  end
+
+  @doc "Close the database connection."
+  @spec close(connection) :: :ok | error_tup2
+  def close(connection), do: close(connection, @default_timeout)
+
+  @doc "Close the database connection."
+  @spec close(connection, timeout) :: :ok | error_tup2
+  def close(connection, timeout)
+
+  def close({:connection, _ref, connection}, timeout) do
+    ref = make_ref()
+    :ok = Sqlite3Nif.close(connection, ref, self())
+    receive_answer(ref, timeout)
+  end
+
+  @doc "Enable the database to load extensions"
+  @spec enable_load_extension(connection) :: :ok | error_tup2
+  def enable_load_extension(connection), do: enable_load_extension(connection, @default_timeout)
+
+  @doc "Enable the database to load extensions"
+  @spec enable_load_extension(connection, timeout) :: :ok | error_tup2
+  def enable_load_extension(connection, timeout)
+  def enable_load_extension({:connection, _ref, connection}, timeout) do
+    ref = make_ref()
+    :ok = Sqlite3Nif.enable_load_extension(connection, ref, self())
+    receive_answer(ref, timeout)
+  end
+
+  @doc "Execute a sql statement, returns a list with tuples."
+  def q(sql, connection), do: q(sql, [], connection)
+
+  @doc "Execute a sql statement, returns a list with tuples."
+  def q(sql, [], connection) do
+    case prepare(sql, connection) do
+      {:ok, statement} -> fetchall(statement)
+      {:error, _} = err -> throw(err)
+    end
+  end
+
+  def q(sql, args, connection) do
+    case prepare(sql, connection) do
+      {:ok, statement} ->
+        :ok = bind(statement, args)
+        fetchall(statement)
+
+      {:error, _} = err ->
+        throw(err)
+    end
+  end
+
+  @doc """
+  Enumerate `sql` applying `f` to each result.
+  """
+  def map(f, sql, connection) do
+    case prepare(sql, connection) do
+      {:ok, statement} -> map_s(f, statement)
+      {:error, _} = err -> throw(err)
+    end
+  end
+
+  defp map_s(f, statement) when is_function(f, 1) do
+    case try_step(statement, 0) do
+      :"$done" -> []
+      {:error, _} = e -> f.(e)
+      {:row, row} -> [f.(row) | map_s(f, statement)]
+    end
+  end
+
+  defp map_s(f, statement) when is_function(f, 2) do
+    column_names = column_names(statement)
+
+    case try_step(statement, 0) do
+      :"$done" -> []
+      {:error, _} = e -> f.([], e)
+      {:row, row} -> [f.(column_names, row) | map_s(f, statement)]
+    end
+  end
+
+  @doc "Apply a function over the results of SQL query."
+  def foreach(f, sql, connection) do
+    case prepare(sql, connection) do
+      {:ok, statement} -> foreach_s(f, statement)
+      {:error, _} = err -> throw(err)
+    end
+  end
+
+  defp foreach_s(f, statement) when is_function(f, 1) do
+    case try_step(statement, 0) do
+      :"$done" ->
+        :ok
+
+      {:error, _} = e ->
+        f.(e)
+
+      {:row, row} ->
+        f.(row)
+        foreach_s(f, statement)
+    end
+  end
+
+  defp foreach_s(f, statement) when is_function(f, 2) do
+    column_names = column_names(statement)
+
+    case try_step(statement, 0) do
+      :"$done" ->
+        :ok
+
+      {:error, _} = e ->
+        f.([], e)
+
+      {:row, row} ->
+        f.(column_names, row)
+        foreach_s(f, statement)
+    end
+  end
+
+  @doc "Return the results of stepping into a `statement`."
+  def fetchone(statement) do
+    case try_step(statement, 0) do
+      :"$done" -> :ok
+      {:error, _} = e -> e
+      {:row, row} -> row
+    end
+  end
+
+  @doc "Return the results after enumerating an entire `statement`."
+  def fetchall(statement) do
+    case try_step(statement, 0) do
+      :"$done" ->
+        []
+
+      {:error, _} = e ->
+        e
+
+      {:row, row} ->
+        case fetchall(statement) do
+          {:error, _} = e -> e
+          rest -> [row | rest]
+        end
+    end
+  end
+
+  defp try_step(statement, tries)
+
+  defp try_step(_statement, tries) when tries > 5, do: throw(:too_many_tries)
+
+  defp try_step(statement, tries) do
+    case step(statement) do
+      :"$busy" ->
+        :timer.sleep(100 * tries)
+        try_step(statement, tries + 1)
+
+      other ->
+        other
+    end
+  end
+
+  defp receive_answer(ref, timeout)
+       when is_reference(ref) and (is_integer(timeout) or timeout == :infinity) do
+    start = :os.timestamp()
+
+    receive do
+      {:esqlite3, ^ref, resp} ->
+        resp
+
+      {:esqlite3, _ref, _resp} = stale ->
+        :ok = Logger.warn("Ignoring stale answer: #{inspect(stale)}")
+        passed_mics = :os.timestamp() |> :timer.now_diff(start) |> div(1000)
+
+        new_timeout =
+          case timeout - passed_mics do
+            passed when passed < 0 -> 0
+            to -> to
+          end
+
+        receive_answer(ref, new_timeout)
+    after
+      timeout -> throw({:error, :timeout, ref})
+    end
+  end
+
+  # This is to remove the default arg injection from the stacktrace.
+  @compile {:inline, open: 1}
+  @compile {:inline, exec: 2}
+  @compile {:inline, changes: 1}
+  @compile {:inline, insert: 2}
+  @compile {:inline, prepare: 2}
+  @compile {:inline, step: 1}
+  @compile {:inline, reset: 1}
+  @compile {:inline, bind: 2}
+  @compile {:inline, column_names: 1}
+  @compile {:inline, column_types: 1}
+  @compile {:inline, close: 1}
 end

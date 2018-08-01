@@ -1,6 +1,6 @@
-defmodule Esqlite3Nif do
+defmodule Sqlite3Nif do
   @moduledoc """
-  Interact with the Esqlite3 nif.
+  Interact with the SqliteNif nif.
   Every function in this module will throw a `:nif_library_not_loaded` error if
   the nif hasn't been compiled/loaded.
   """
@@ -94,7 +94,7 @@ defmodule Esqlite3Nif do
 
   @doc false
   def load_nif do
-    nif_file = Path.join([:code.priv_dir(:esqlite), 'esqlite3_nif'])
+    nif_file = Path.join([:code.priv_dir(:sqlite), 'sqlite3_nif'])
     case :erlang.load_nif(to_charlist(nif_file), 0) do
       :ok -> :ok
       {:error, {:reload, _}} -> :ok
