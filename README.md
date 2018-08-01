@@ -1,6 +1,5 @@
-[![CircleCI](https://circleci.com/gh/Sqlite-Ecto/esqlite.svg?style=svg)](https://circleci.com/gh/Sqlite-Ecto/esqlite)
-[![Coverage Status](https://coveralls.io/repos/github/Sqlite-Ecto/esqlite/badge.svg?branch=master)](https://coveralls.io/github/Sqlite-Ecto/esqlite?branch=master)
-[![Inline docs](http://inch-ci.org/github/connorrigby/esqlite.svg?branch=master)](http://inch-ci.org/github/connorrigby/esqlite)
+[![CircleCI](https://circleci.com/gh/Sqlite-Ecto/elixir_sqlite.svg?style=svg)](https://circleci.com/gh/Sqlite-Ecto/elixir_sqlite)
+[![Coverage Status](https://coveralls.io/repos/github/Sqlite-Ecto/elixir_sqlite/badge.svg?branch=master)](https://coveralls.io/github/Sqlite-Ecto/elixir_sqlite?branch=master)
 
 # Sqlite
 Elixir API for interacting with SQLite databases.
@@ -18,12 +17,13 @@ the command has been added to the command-queue of the thread.
 
 # Usage
 ```elixir
-{:ok, database} = Sqlite.open(database: "/tmp/database.sqlite3")
-{:ok, statement} = Sqlite.prepare(database, "CREATE TABLE data (id int, data text)")
-{:ok, _} = Sqlite.execute(database, statement, [])
-{:ok, statement} = Sqlite.prepare(database, "INSERT INTO data (data) VALUES ($1)")
-{:ok, _} = Sqlite.execute(database, statement, ["neat!"])
-{:ok, %Sqlite.Result{columns: [:data], num_rows: 1, rows: [["neat!"]]}} = Sqlite.query(database, "SELECT data FROM data", [])
+alias Sqlite.Connection
+{:ok, database} = Connection.open(database: "/tmp/database.sqlite3")
+{:ok, statement} = Connection.prepare(database, "CREATE TABLE data (id int, data text)")
+{:ok, _} = Connection.execute(database, statement, [])
+{:ok, statement} = Connection.prepare(database, "INSERT INTO data (data) VALUES ($1)")
+{:ok, _} = Connection.execute(database, statement, ["neat!"])
+{:ok, %Sqlite.Result{columns: [:data], num_rows: 1, rows: [["neat!"]]}} = Connection.query(database, "SELECT data FROM data", [])
 ```
 
 # Tests
@@ -34,9 +34,6 @@ backwards compatibility. By default these tests get ran by default.
 ```bash
 # All the tests without the bench marks.
 mix test
-
-# Run only erlang tests.
-mix test --only esqlite_erlang
 ```
 
 # Benchmarks
