@@ -53,7 +53,8 @@ defmodule Sqlite3Nif do
   def prepare(_db, _ref, _dest, _sql), do: :erlang.nif_error(:nif_library_not_loaded)
 
   @spec multi_step(connection, statement, pos_integer, reference, pid) :: :ok | error_tup2
-  def multi_step(_db, _stmt, _chunk_size, _ref, _dest), do: :erlang.nif_error(:nif_library_not_loaded)
+  def multi_step(_db, _stmt, _chunk_size, _ref, _dest),
+    do: :erlang.nif_error(:nif_library_not_loaded)
 
   @doc "Reset a prepared statement."
   @spec reset(connection, statement, reference, pid) :: :ok | error_tup2
@@ -95,6 +96,7 @@ defmodule Sqlite3Nif do
   @doc false
   def load_nif do
     nif_file = Path.join([:code.priv_dir(:sqlite), 'sqlite3_nif'])
+
     case :erlang.load_nif(to_charlist(nif_file), 0) do
       :ok -> :ok
       {:error, {:reload, _}} -> :ok

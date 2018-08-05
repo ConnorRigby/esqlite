@@ -26,3 +26,4 @@ esqlite-*.tar
 /priv
 *.o
 *.db
+docs

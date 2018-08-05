@@ -123,6 +123,7 @@ defmodule Sqlite do
   def step({:statement, prepared_statement, {:connection, _ref, connection}}, timeout) do
     ref = make_ref()
     :ok = Sqlite3Nif.multi_step(connection, prepared_statement, 1, ref, self())
+
     case receive_answer(ref, timeout) do
       {:rows, [row | []]} -> {:row, row}
       {:"$done", []} -> :"$done"
@@ -208,6 +209,7 @@ defmodule Sqlite do
   @doc "Enable the database to load extensions"
   @spec enable_load_extension(connection, timeout) :: :ok | error_tup2
   def enable_load_extension(connection, timeout)
+
   def enable_load_extension({:connection, _ref, connection}, timeout) do
     ref = make_ref()
     :ok = Sqlite3Nif.enable_load_extension(connection, ref, self())

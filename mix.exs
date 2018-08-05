@@ -4,7 +4,7 @@ defmodule Sqlite.MixProject do
   def project do
     [
       app: :sqlite,
-      version: "1.0.0",
+      version: "1.0.2",
       elixir: "~> 1.4",
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_clean: ["clean"],
@@ -53,15 +53,28 @@ defmodule Sqlite.MixProject do
       {:elixir_make, "~> 0.4.2", runtime: false},
       {:excoveralls, "~> 0.9", only: :test, optional: true},
       {:ex_doc, "~> 0.18.0", only: :dev, runtime: false},
-      {:inch_ex, "~> 1.0", only: :test},
+      {:inch_ex, "~> 1.0", only: :test}
     ]
   end
 
   defp package do
-   [maintainers: ["Connor Rigby"],
-     licenses: ["Apache2"],
-     links: %{
-      github: "https://github.com/Sqlite-Ecto/elixir_sqlite",
-      docs: "http://hexdocs.pm/sqlite"}]
+    [
+      maintainers: ["Connor Rigby"],
+      licenses: ["Apache2"],
+      links: %{
+        github: "https://github.com/Sqlite-Ecto/elixir_sqlite",
+        docs: "http://hexdocs.pm/sqlite"
+      },
+      files: [
+        "lib",
+        "c_src/*.[ch]",
+        "c_src/sqlite3/*.[ch]",
+        "test",
+        "mix.exs",
+        "README.md",
+        "LICENSE",
+        "Makefile",
+      ]
+    ]
   end
 end
