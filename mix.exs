@@ -4,7 +4,7 @@ defmodule Sqlite.MixProject do
   def project do
     [
       app: :sqlite,
-      version: "0.2.3",
+      version: "1.0.0",
       elixir: "~> 1.6",
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_clean: ["clean"],
