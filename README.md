@@ -1,5 +1,9 @@
 [![CircleCI](https://circleci.com/gh/Sqlite-Ecto/elixir_sqlite.svg?style=svg)](https://circleci.com/gh/Sqlite-Ecto/elixir_sqlite)
 [![Coverage Status](https://coveralls.io/repos/github/Sqlite-Ecto/elixir_sqlite/badge.svg?branch=master)](https://coveralls.io/github/Sqlite-Ecto/elixir_sqlite?branch=master)
+[![Inline docs](http://inch-ci.org/github/Sqlite-Ecto/elixir_sqlite.svg)](http://inch-ci.org/github/Sqlite-Ecto/elixir_sqlite)
+[![Hex.pm](https://img.shields.io/hexpm/v/elixir_sqlite.svg)](https://hex.pm/packages/elixir_sqlite)
+[![Hex.pm](https://img.shields.io/hexpm/dt/elixir_sqlite.svg)](https://hex.pm/packages/elixir_sqlite)
+
 
 # Sqlite
 Elixir API for interacting with SQLite databases.
@@ -17,13 +21,11 @@ the command has been added to the command-queue of the thread.
 
 # Usage
 ```elixir
-alias Sqlite.Connection
-{:ok, database} = Connection.open(database: "/tmp/database.sqlite3")
-{:ok, statement} = Connection.prepare(database, "CREATE TABLE data (id int, data text)")
-{:ok, _} = Connection.execute(database, statement, [])
-{:ok, statement} = Connection.prepare(database, "INSERT INTO data (data) VALUES ($1)")
-{:ok, _} = Connection.execute(database, statement, ["neat!"])
-{:ok, %Sqlite.Result{columns: [:data], num_rows: 1, rows: [["neat!"]]}} = Connection.query(database, "SELECT data FROM data", [])
+{:ok, db} = Sqlite.open(":memory:")
+Sqlite.exec("create virtual table test_table using fts3(content text);", db)
+:ok = Sqlite.exec("create table test_table(one varchar(10), two int);", db)
+:ok = Sqlite.exec(["insert into test_table values(", "\"hello1\"", ",", "10);"], db)
+{:ok, 1} = Sqlite.changes(db)
 ```
 
 # Tests

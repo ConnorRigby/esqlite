@@ -3,7 +3,7 @@ defmodule Sqlite do
   Use a Sqlite3 database in Elixir _and_ Erlang!
   """
   require Logger
-  @default_timeout Application.get_env(:esqlite, :default_timeout, 5000)
+  @default_timeout Application.get_env(:sqlite, :default_timeout, 5000)
 
   @typep error_tup2 :: {:error, term}
 

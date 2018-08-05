@@ -5,20 +5,18 @@ defmodule Sqlite.MixProject do
     [
       app: :sqlite,
       version: "1.0.0",
-      elixir: "~> 1.6",
+      elixir: "~> 1.4",
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_clean: ["clean"],
       make_env: make_env(),
       plt_add_deps: :apps_direct,
       plt_add_apps: [],
       dialyzer: [flags: [:unmatched_returns, :race_conditions, :no_unused]],
-      erlc_paths: erlc_paths(Mix.env()),
-      test_paths: ["test", "bench"],
       start_permanent: Mix.env() == :prod,
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
-        test: :test,
         coveralls: :test,
+        "coveralls.circls": :test,
         "coveralls.detail": :test,
         "coveralls.post": :test,
         "coveralls.html": :test
@@ -26,9 +24,6 @@ defmodule Sqlite.MixProject do
       deps: deps()
     ]
   end
-
-  defp erlc_paths(:test), do: ["erl_test"]
-  defp erlc_paths(_), do: []
 
   defp make_env() do
     case System.get_env("ERL_EI_INCLUDE_DIR") do
@@ -45,19 +40,18 @@ defmodule Sqlite.MixProject do
 
   # Run "mix help compile.app" to learn about applications.
   def application do
-    [
-      extra_applications: [:logger]
-    ]
+    [extra_applications: [:logger]]
   end
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elixir_make, "~> 0.4.2", runtime: false},
+      {:credo, "~> 0.10", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.0.0-rc.3", runtime: false, only: :dev},
+      {:elixir_make, "~> 0.4.2", runtime: false},
       {:excoveralls, "~> 0.9", only: :test, optional: true},
       {:ex_doc, "~> 0.18.0", only: :dev, runtime: false},
-      {:credo, "~> 0.10", only: [:dev, :test], runtime: false}
+      {:inch_ex, "~> 1.0", only: :test},
     ]
   end
 end
