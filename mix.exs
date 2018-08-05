@@ -9,6 +9,8 @@ defmodule Sqlite.MixProject do
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_clean: ["clean"],
       make_env: make_env(),
+      package: package(),
+      description: "Elixir NIF for Sqlite3.",
       plt_add_deps: :apps_direct,
       plt_add_apps: [],
       dialyzer: [flags: [:unmatched_returns, :race_conditions, :no_unused]],
@@ -53,5 +55,13 @@ defmodule Sqlite.MixProject do
       {:ex_doc, "~> 0.18.0", only: :dev, runtime: false},
       {:inch_ex, "~> 1.0", only: :test},
     ]
+  end
+
+  defp package do
+   [maintainers: ["Connor Rigby"],
+     licenses: ["Apache2"],
+     links: %{
+      github: "https://github.com/Sqlite-Ecto/elixir_sqlite",
+      docs: "http://hexdocs.pm/sqlite"}]
   end
 end
