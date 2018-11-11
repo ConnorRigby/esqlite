@@ -30,6 +30,9 @@ defmodule Sqlite3Nif do
   @spec open(connection, reference, pid, Path.t(), tuple) :: :ok | error_tup2
   def open(_db, _ref, _dest, _filename, _flags), do: :erlang.nif_error(:nif_library_not_loaded)
 
+  @doc "Subscribes to sqlite3 notifications."
+  def subscribe(_db, _ref, _dest), do: :erlang.nif_error(:nif_library_not_loaded)
+
   @doc """
   Exec the query.
   Sends an asynchronous exec command over the connection and returns

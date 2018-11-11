@@ -73,7 +73,7 @@ defmodule Sqlite.MixProject do
         "mix.exs",
         "README.md",
         "LICENSE",
-        "Makefile",
+        "Makefile"
       ]
     ]
   end

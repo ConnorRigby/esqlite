@@ -50,6 +50,7 @@ typedef struct {
 typedef enum {
     cmd_unknown,
     cmd_open,
+    cmd_subscribe,
     cmd_exec,
     cmd_changes,
     cmd_prepare,
@@ -279,6 +280,47 @@ do_open(ErlNifEnv *env, esqlite_connection *db, const ERL_NIF_TERM arg)
 
     return make_atom(env, "ok");
 }
+
+void
+update_callback(void *arg, int sqlite_operation_type, char const *sqlite_database, char const *sqlite_table, sqlite3_int64 sqlite_rowid)
+{
+    (void*) sqlite_database; // not used
+    ErlNifEnv *env = enif_alloc_env();
+    ErlNifPid *pid = (ErlNifPid*) arg;
+
+    ERL_NIF_TERM type, table, rowid, msg;
+    rowid = enif_make_int64(env, sqlite_rowid);
+    table = enif_make_string(env, sqlite_table, ERL_NIF_LATIN1);
+
+    switch(sqlite_operation_type) {
+        case SQLITE_INSERT:
+            type = make_atom(env, "insert");
+            break;
+        case SQLITE_DELETE:
+            type = make_atom(env, "delete");
+            break;
+        case SQLITE_UPDATE:
+            type = make_atom(env, "update");
+            break;
+        default:
+            type = make_atom(env, "unknown");
+            break;
+    }
+    msg = enif_make_tuple3(env, table, type, rowid);
+    enif_send(NULL, pid, env, msg);
+    // enif_fprintf(stderr, "\n Operation type – %d \n Database – %s\n Table – %s\n RowId – %d\n", operation_type, database, table, rowid);
+}
+
+/*
+ */
+static ERL_NIF_TERM
+do_subscribe(ErlNifEnv *env, esqlite_connection *conn, ErlNifPid pid)
+{
+    sqlite3_update_hook(conn->db, update_callback, &pid);
+    return make_atom(env, "ok");
+}
+
+
 
 /*
  */
@@ -662,6 +704,8 @@ evaluate_command(esqlite_command *cmd, esqlite_connection *conn)
     switch(cmd->type) {
     case cmd_open:
 	    return do_open(cmd->env, conn, cmd->arg);
+    case cmd_subscribe:
+        return do_subscribe(cmd->env, conn, cmd->pid);
     case cmd_exec:
 	    return do_exec(cmd->env, conn, cmd->arg);
     case cmd_changes:
@@ -836,6 +880,37 @@ esqlite_open(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
     cmd->ref = enif_make_copy(cmd->env, argv[1]);
     cmd->pid = pid;
     cmd->arg = enif_make_tuple2(cmd->env, enif_make_copy(cmd->env, argv[3]), enif_make_int(cmd->env, flag_count));
+
+    return push_command(env, db, cmd);
+}
+
+/*
+* Setup notification callbacks
+*/
+static ERL_NIF_TERM
+esqlite_subscribe(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[])
+{
+    esqlite_connection *db;
+    esqlite_command *cmd = NULL;
+    ErlNifPid pid;
+    if(argc != 3)
+	    return enif_make_badarg(env);
+    if(!enif_get_resource(env, argv[0], esqlite_connection_type, (void **) &db))
+	    return enif_make_badarg(env);
+    if(!enif_is_ref(env, argv[1]))
+	    return make_error_tuple(env, "invalid_ref");
+    if(!enif_get_local_pid(env, argv[2], &pid))
+	    return make_error_tuple(env, "invalid_pid");
+
+    cmd = command_create();
+    if(!cmd)
+	    return make_error_tuple(env, "command_create_failed");
+
+    /* command */
+    cmd->type = cmd_subscribe;
+    cmd->ref = enif_make_copy(cmd->env, argv[1]);
+    cmd->pid = pid;
+    cmd->arg = make_atom(env, "nil");
 
     return push_command(env, db, cmd);
 }
@@ -1249,6 +1324,7 @@ static int on_upgrade(ErlNifEnv* env, void** priv, void** old_priv_data, ERL_NIF
 static ErlNifFunc nif_funcs[] = {
     {"start", 0, esqlite_start},
     {"open", 5, esqlite_open},
+    {"subscribe", 3, esqlite_subscribe},
     {"exec", 4, esqlite_exec},
     {"changes", 3, esqlite_changes},
     {"prepare", 4, esqlite_prepare},

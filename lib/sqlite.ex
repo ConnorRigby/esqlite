@@ -41,6 +41,14 @@ defmodule Sqlite do
     end
   end
 
+  def subscribe(connection), do: subscribe(connection, @default_timeout)
+
+  def subscribe({:connection, _ref, connection}, timeout) do
+    ref = make_ref()
+    :ok = Sqlite3Nif.subscribe(connection, ref, self())
+    receive_answer(ref, timeout)
+  end
+
   @doc "Execute sql statement, returns the number of affected rows."
   @spec exec(sql, connection) :: :ok | error_tup2
   def exec(sql, connection), do: exec(sql, connection, @default_timeout)

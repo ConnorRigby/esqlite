@@ -23,6 +23,23 @@ defmodule SqliteTest do
       Sqlite.exec("create table test_table(one varchar(10), two int);", db)
   end
 
+  test "subscribe" do
+    {:ok, db} = Sqlite.open(":memory:")
+    assert :ok = Sqlite.exec("create table test_table(id id, two int);", db)
+    assert :ok = Sqlite.subscribe(db)
+    :ok = Sqlite.exec(["insert into test_table values(1, 10);"], db)
+    assert_receive {'test_table', :insert, 1}
+
+    :ok = Sqlite.exec(["update test_table set two = 20 where id = 1;"], db)
+    assert_receive {'test_table', :update, 1}
+
+    :ok = Sqlite.exec(["update test_table set id = 2 where id = 1;"], db)
+    assert_receive {'test_table', :update, 1}
+
+    :ok = Sqlite.exec(["delete from test_table where id = 2;"], db)
+    assert_receive {'test_table', :delete, 1}
+  end
+
   test "enable loadable extensions" do
     {:ok, db} = Sqlite.open(":memory:")
     assert match?(:ok, Sqlite.enable_load_extension(db))
