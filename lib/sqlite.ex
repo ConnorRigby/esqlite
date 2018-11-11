@@ -41,6 +41,14 @@ defmodule Sqlite do
     end
   end
 
+  @doc """
+  Subscribes to sqlite3 database updates.
+  Messages will be recieved as follows:
+
+      {'database-name', :insert | :update | :delete, rowid}
+
+  """
+  @spec subscribe(connection, timeout) :: :ok | error_tup2
   def subscribe(connection), do: subscribe(connection, @default_timeout)
 
   def subscribe({:connection, _ref, connection}, timeout) do

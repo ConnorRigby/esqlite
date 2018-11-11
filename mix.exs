@@ -62,8 +62,8 @@ defmodule Sqlite.MixProject do
       maintainers: ["Connor Rigby"],
       licenses: ["Apache2"],
       links: %{
-        github: "https://github.com/Sqlite-Ecto/elixir_sqlite",
-        docs: "http://hexdocs.pm/sqlite"
+        GitHub: "https://github.com/Sqlite-Ecto/elixir_sqlite",
+        source_url: "https://github.com/Sqlite-Ecto/elixir_sqlite"
       },
       files: [
         "lib",
