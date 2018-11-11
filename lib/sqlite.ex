@@ -26,6 +26,8 @@ defmodule Sqlite do
   @doc "Opens a sqlite3 database mentioned in filename with flags."
   def open(filename, flags) when is_tuple(flags), do: open(filename, flags, @default_timeout)
 
+  def open(filename, timeout), do: open(filename, {:readwrite, :create}, timeout)
+
   @doc "Opens a sqlite3 database with a flags tuple and a timeout."
   @spec open(filename, tuple, timeout) :: {:ok, connection} | error_tup2
   def open(filename, flags, timeout) when is_tuple(flags) do
